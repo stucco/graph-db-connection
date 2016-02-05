@@ -25,7 +25,7 @@ public interface DBConnectionAlignment {
      * @param name - a canonical name for the vertex node
      * @return a property map of the vertex, user must know based on the key how to recast the object type to use its value
      */
-    public Map<String, Object> getVertByName(String name);
+    public Map<String, Object> getVertByName(String name) throws InvalidStateException, InvalidArgumentException;
 
     /**
      * Retrieves the vertex ID using the vertex canonical name
@@ -39,7 +39,7 @@ public interface DBConnectionAlignment {
      * @param properties - the property map of the vertex
      * @return ID of the vertex as defined in the DB
      */
-    public String addVertex(Map<String, Object> properties);
+    public String addVertex(Map<String, Object> properties) throws InvalidStateException, InvalidArgumentException;
 
     /**
      * Perform a query/search of the DB using the following constraints on the request
@@ -55,7 +55,7 @@ public interface DBConnectionAlignment {
      * @param relation - relationship type
      * @return edge ID
      */
-    public String addEdge(String v1, String v2, String relation);
+    public String addEdge(String v1, String v2, String relation) throws InvalidStateException, InvalidArgumentException;
 
     /**
      * return the property map of an edge
@@ -72,7 +72,7 @@ public interface DBConnectionAlignment {
      * @param relation type of relationship for the edge
      * @return list of edge IDs that meet the input criteria
      */
-    public List<String>getEdgeIDsByVert(String v1, String v2, String relation);
+    public List<String>getEdgeIDsByVert(String v1, String v2, String relation) throws InvalidStateException, InvalidArgumentException;
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
@@ -80,7 +80,7 @@ public interface DBConnectionAlignment {
      * @param relation the relationship type of the edge
      * @return list of vertex IDs
      */
-    public List<String>getInVertIDsByRelation(String v1, String relation);
+    public List<String>getInVertIDsByRelation(String v1, String relation) throws InvalidStateException, InvalidArgumentException;
 
     /**
      * Identify the vertices where their relationship type and direction leave the specified vertex
@@ -88,7 +88,7 @@ public interface DBConnectionAlignment {
      * @param relation the relationship type of the edge
      * @return list of vertex IDs
      */
-    public List<String>getOutVertIDsByRelation(String v1, String relation);
+    public List<String>getOutVertIDsByRelation(String v1, String relation) throws InvalidStateException, InvalidArgumentException;
 
     /**
      * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
@@ -96,7 +96,7 @@ public interface DBConnectionAlignment {
      * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
-    public List<String>getVertIDsByRelation(String v1, String relation);
+    public List<String>getVertIDsByRelation(String v1, String relation) throws InvalidStateException, InvalidArgumentException;
     /**
      * Given a specific edge remove it from the DB
      * @param id - edge ID
@@ -110,19 +110,19 @@ public interface DBConnectionAlignment {
      * @param id - vertex ID
      * @return property map of the vertex
      */
-    public Map<String,Object> removeVertByID(String id);
+    public Map<String,Object> removeVertByID(String id) throws InvalidStateException, InvalidArgumentException;
 
-    // GN: If there's a close, then it's natural to expect an open. If it's
-    // assumed it's not needed because the constructor will do that, then the
-    // documentation should probably say so. If we use a factory to construct
-    // the implementation class, it may be better to have it not open the
-    // database while still in the factory, and use an explicit open method
-    // instead. One advantage of that would be the caller of open() might be
-    // in a better position to handle any exceptions.
     /**
-     * Close the DB and commit any transactions
+     * Close the DB and commit any transactions, for certain system it may be a NO-OP
      */
     public void close();
+    
+    /**
+     * Open the DB prior to working with the system, for every open there should be a 
+     * corresponding close()
+     * If the system is already open() not other connections will be made from this thread
+     */
+    public void open();
 
 
 

@@ -1,32 +1,12 @@
 package gov.pnnl.stucco.dbconnect;
 
-// GN: I assume this class is adapted from Constraint.java.
-//
-// It looks like an interface is needed because the condString implementation
-// needs to be different for each database. I'm guessing the enum implementation
-// will be the same for all databases. In that case, I would just make it its
-// own class, instead of being in the interface. If your preference is to keep
-// Condition still somewhat under the control of the Constraint "namespace",
-// then an alternative to putting it in the interface would be to put it in an
-// abstract base class used as the foundation for implementations of the
-// interface. Many of the core Java classes use this sort of pattern.
-
+/**
+ * This interface is the way we specify names, values and conditionals when searching for
+ * or filtering out types of vertices.  The interface is required to deal with the various
+ * implementation of the various DBs and how they implement that functionality.
+ *
+ */
 public interface DBConstraint {
-
-    /**
-     * the set of conditions that can be used for comparisons
-     *
-     */
-    public enum Condition {
-        gt,     // greater than
-        gte,    // greater than or equal
-        eq,     // equal to
-        neq,    // not equal to
-        lte,    // less than or equal to
-        lt,     // less than
-        in,     // inside (set operation)
-        notin   // not inside (set operation)
-    }
 
     /**
      * returns the string to be used as part of the conditional portion for a query to the DB
@@ -34,5 +14,23 @@ public interface DBConstraint {
      * @return the DB syntax to be used for that DB
      */
     public String condString(Condition c);
+    
+    /**
+     * Get the Condition associated with the DB type we are using to know how the comparison should be done
+     * @return
+     */
+    public Condition getCond();
+    
+    /**
+     * Get the property name that is associated with constraint
+     * @return
+     */
+    public String getProp();
+    
+    /**
+     * Get the property value that is to be used in the constraint
+     * @return
+     */
+    public Object getVal();
 
 }

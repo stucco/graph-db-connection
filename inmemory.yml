@@ -1,0 +1,16 @@
+#TODO: not sure about some of these timeout values, some seem to change nothing
+# See documentation at: https://github.com/tinkerpop/rexster/wiki/RexPro-Java#settings
+database_connection:
+  hostname : localhost
+  port : 8184
+  timeout-connection-ms : 18000
+  timeout-write-ms : 4000
+  timeout-read-ms : 16000
+  max-async-write-queue-size : 512000
+  message-retry-count : 4
+  message-retry-wait-ms : 50
+  language : groovy
+  graph-obj-name : g
+  graph-name : graph
+  transaction : true
+  serializer : 0
