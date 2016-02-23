@@ -8,7 +8,7 @@ import gov.pnnl.stucco.dbconnect.DBConstraintBase;
  * in-memory comparison types.
  *
  */
-public class Constraint extends DBConstraintBase {
+public class InMemoryConstraint extends DBConstraintBase {
 
     /**
      * Constructor
@@ -16,7 +16,7 @@ public class Constraint extends DBConstraintBase {
      * @param condition
      * @param value
      */
-    public Constraint(String property, Condition condition, Object value){
+    public InMemoryConstraint(String property, Condition condition, Object value){
         super(property, condition, value);
     }
     

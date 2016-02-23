@@ -1,21 +1,22 @@
-package gov.pnnl.stucco.dbconnect.inmemory;
+package gov.pnnl.stucco.dbconnect.orientdb;
 
 import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
+import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnection;
 
 /**
- * This is a concrete Factory for the in-memory instance of a DB
+ * This is a concrete Factory for the OrientDB instance of a DB
  *
  */
-public class InMemoryDBConnectionFactory extends DBConnectionFactory {
+public class OrientDBConnectionFactory extends DBConnectionFactory {
     
     
     /**
      * constructor of the factory
      */
-    public InMemoryDBConnectionFactory() {
+    public OrientDBConnectionFactory() {
         super();
     }
     
@@ -24,17 +25,19 @@ public class InMemoryDBConnectionFactory extends DBConnectionFactory {
      */
     public DBConnectionAlignment getDBConnectionAlignment() {
 
-        return new InMemoryDBConnection();
+        return new OrientDBConnection(configuration);
 
     }
+
 
     /**
      * return the DBconnection object for the Indexer
      * @return
      */
+    @Override
     public DBConnectionIndexerInterface getDBConnectionIndexer() {
-
-        return new InMemoryDBConnection();
+        
+        return new OrientDBConnection(configuration);
     }
 
     /**
@@ -42,7 +45,7 @@ public class InMemoryDBConnectionFactory extends DBConnectionFactory {
      */
     @Override
     public DBConnectionTestInterface getDBConnectionTestInterface() {
-        return new InMemoryDBConnection();
+        return new OrientDBConnection(configuration);
     }
 
 }

@@ -25,7 +25,7 @@ public interface DBConnectionAlignment {
      * @param name - a canonical name for the vertex node
      * @return a property map of the vertex, user must know based on the key how to recast the object type to use its value
      */
-    public Map<String, Object> getVertByName(String name) throws InvalidStateException, InvalidArgumentException;
+    public Map<String, Object> getVertByName(String name);
 
     /**
      * Retrieves the vertex ID using the vertex canonical name
@@ -39,7 +39,7 @@ public interface DBConnectionAlignment {
      * @param properties - the property map of the vertex
      * @return ID of the vertex as defined in the DB
      */
-    public String addVertex(Map<String, Object> properties) throws InvalidStateException, InvalidArgumentException;
+    public String addVertex(Map<String, Object> properties);
 
     /**
      * Perform a query/search of the DB using the following constraints on the request
@@ -53,26 +53,8 @@ public interface DBConnectionAlignment {
      * @param v1 - vertex ID
      * @param v2 - vertex ID
      * @param relation - relationship type
-     * @return edge ID
      */
-    public String addEdge(String v1, String v2, String relation) throws InvalidStateException, InvalidArgumentException;
-
-    /**
-     * return the property map of an edge
-     * @param id of the edge
-     * @return property map
-     */
-    public Map<String,Object> getEdgeById(String id);
-
-    /**
-     * identifies the edges that exist between two vertices with a specific relationship type
-     *  (TBD:  DOES ORDER MATTER for v1 and v2?)
-     * @param v1 vertex ID for first vertex
-     * @param v2 vertex ID for second vertex
-     * @param relation type of relationship for the edge
-     * @return list of edge IDs that meet the input criteria
-     */
-    public List<String>getEdgeIDsByVert(String v1, String v2, String relation) throws InvalidStateException, InvalidArgumentException;
+    public void addEdge(String v1, String v2, String relation);
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
@@ -80,7 +62,7 @@ public interface DBConnectionAlignment {
      * @param relation the relationship type of the edge
      * @return list of vertex IDs
      */
-    public List<String>getInVertIDsByRelation(String v1, String relation) throws InvalidStateException, InvalidArgumentException;
+    public List<String>getInVertIDsByRelation(String v1, String relation);
 
     /**
      * Identify the vertices where their relationship type and direction leave the specified vertex
@@ -88,7 +70,7 @@ public interface DBConnectionAlignment {
      * @param relation the relationship type of the edge
      * @return list of vertex IDs
      */
-    public List<String>getOutVertIDsByRelation(String v1, String relation) throws InvalidStateException, InvalidArgumentException;
+    public List<String>getOutVertIDsByRelation(String v1, String relation);
 
     /**
      * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
@@ -96,21 +78,21 @@ public interface DBConnectionAlignment {
      * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
-    public List<String>getVertIDsByRelation(String v1, String relation) throws InvalidStateException, InvalidArgumentException;
+    public List<String>getVertIDsByRelation(String v1, String relation);
     /**
-     * Given a specific edge remove it from the DB
-     * @param id - edge ID
-     * @return property map of the edge
+     * Given two vertices and a relation, remove the edge
+     * @param v1 - vertex ID
+     * @param v2 - vertex ID
+     * @param relation - relationship type
      */
-    public Map<String,Object> removeEdgeByID(String id);
+    public void removeEdgeByRelation(String v1, String v2, String relation);
 
     /**
      * Given a specific vertex remove it from the DB
      * (Note any edges connected to it will also be removed)
      * @param id - vertex ID
-     * @return property map of the vertex
      */
-    public Map<String,Object> removeVertByID(String id) throws InvalidStateException, InvalidArgumentException;
+    public void removeVertByID(String id);
 
     /**
      * Close the DB and commit any transactions, for certain system it may be a NO-OP
@@ -124,7 +106,23 @@ public interface DBConnectionAlignment {
      */
     public void open();
 
-
+    /**
+     * get the number of edges based on incoming vertex and outgoing vertex and a relationship
+     * @param inVertID - incoming vertex
+     * @param outVertID - outgoing vertex
+     * @param relation - label/relations on the edge
+     * @return a count of edges
+     */
+    public int getEdgeCountByRelation(String inVertID, String outVertID, String relation);
+    
+    /**
+     * 
+     * @param property name
+     * @param condition 
+     * @param value
+     */
+    public DBConstraint getConstraint(String property, Condition condition, Object value);
+    
 
 
 

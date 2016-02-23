@@ -4,6 +4,8 @@ package gov.pnnl.stucco.dbconnect;
  *
  */
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnectionFactory;
+import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnection;
+import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnectionFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -54,7 +56,7 @@ public abstract class DBConnectionFactory {
             case NEO4J:
                 break;
             case ORIENTDB:
-                break;
+                return new OrientDBConnectionFactory();
             case TITAN:
                 break;
             default:
@@ -78,7 +80,7 @@ public abstract class DBConnectionFactory {
      * a yaml file
      * @param configFilename
      */
-    protected void setConfiguration(String configFilename) {
+    public void setConfiguration(String configFilename) {
         Map<String, String> configuration = dbConfigFromFile(configFilename);
         this.setConfiguration(configuration);
     }
@@ -88,7 +90,12 @@ public abstract class DBConnectionFactory {
      * @return
      */
     public abstract DBConnectionAlignment getDBConnectionAlignment();
-//    public abstract DBConnectionAlignment getDBConnectionIndexer();
+    
+    /**
+     * gets the indexer DB connection interface for the DB type factory
+     * @return
+     */
+    public abstract DBConnectionIndexerInterface getDBConnectionIndexer();
     
     /**
      * gets the test DB connection interface for the DB type factory

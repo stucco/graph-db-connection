@@ -1,0 +1,13 @@
+database_connection:
+  port : 8184
+  timeout-connection-ms : 3600000
+  timeout-write-ms : 4000
+  timeout-read-ms : 4000
+  max-async-write-queue-size : 512000
+  message-retry-count : 4
+  message-retry-wait-ms : 100
+  graph-obj-name : g
+  graph-name : remote:localhost/home/stuccouser/orientdb/orientdb-community-2.1.2/databases/graph
+#  graph-name : plocal:/home/stuccouser/orientdb/orientdb-community-2.1.2/databases/stucco-test
+  transaction : true
+  serializer : 0
