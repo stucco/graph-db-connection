@@ -2,6 +2,7 @@ package gov.pnnl.stucco.dbconnect.inmemory;
 
 
 import gov.pnnl.stucco.dbconnect.Condition;
+import gov.pnnl.stucco.dbconnect.DBConnectionBase;
 import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
@@ -22,11 +23,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+
 /**
  * This class represents a concrete implementation of an in-memory DB Connection Type
  *
  */
-public class InMemoryDBConnection implements DBConnectionAlignment, DBConnectionTestInterface, DBConnectionIndexerInterface{
+public class InMemoryDBConnection extends DBConnectionBase{
 
     /** logger variable to track activities in this class*/
     private Logger logger = null;
@@ -378,13 +381,6 @@ public class InMemoryDBConnection implements DBConnectionAlignment, DBConnection
         }else if(o1 instanceof Object[]){
             //System.out.println("Array is " + (Object[])o1);
             return Arrays.asList((Object[])o1).contains(o2);
-        }else if(o1 instanceof String){
-            String s1 = (String)o1;
-            //System.out.println("String is " + s1);
-            if(o2 instanceof CharSequence || o2 instanceof Character)
-                return s1.contains(o2.toString());
-            else
-                return false;
         }
         return false;
     }
@@ -417,12 +413,17 @@ public class InMemoryDBConnection implements DBConnectionAlignment, DBConnection
             throw new IllegalArgumentException("cannot add vertes with empty name field");
         }//TODO check any other mandatory fields
 
+
+        
         String name = (String)nameObj;
         if(vertIDs.containsKey(name)){
             removeVertByID(getVertIDByName(name));
         }
         String vertID = String.valueOf( UUID.randomUUID() );
         vertIDs.put(name, vertID);
+        
+        // make sure all multi-value properties are sets
+        convertAllMultiValuesToSet(vert);
         vertices.put(vertID, vert);
         //TODO: update any indices
         return vertID;
@@ -472,49 +473,12 @@ public class InMemoryDBConnection implements DBConnectionAlignment, DBConnection
             throw new IllegalArgumentException("cannot update name of existing vertex");
         }
 
-        for(String k: newVert.keySet()){
-            oldVert.put(k, newVert.get(k));
+        for(Map.Entry<String, Object> entry: newVert.entrySet()){
+            
+            String key = entry.getKey();
+            Object newValue = entry.getValue();
+            updateVertexProperty(VertID, key, newValue);
         }
-        //TODO: update any indices
-    }
-
-
-
-    //see Align class
-    /**
-     * method to convert a JSON array to a Java List
-     * @param a
-     * @return
-     */
-    public List<Object> jsonArrayToList(JSONArray a){
-        List<Object> l = new ArrayList<Object>();
-        for(int i=0; i<a.length(); i++){
-            l.add(a.get(i));
-        }
-        return l;
-    }
-
-    //see Align class	
-    /**
-     * converts a JSON Vertex to a Java Map
-     * @param v
-     * @return property map for the Vertex
-     */
-    @Override
-    public Map<String, Object> jsonVertToMap(JSONObject v){
-        Map<String, Object> vert = new HashMap<String, Object>();
-        for(Object k : v.keySet()){
-            String key = (String) k;
-            Object value = v.get(key);
-            if(value instanceof JSONArray){
-                value = jsonArrayToList((JSONArray)value);
-            }
-            else if(value instanceof JSONObject){
-                logger.warn("jsonVertToMap: unexpected property type: JSONObject for property " + key + "\n" + v);
-            }
-            vert.put(key, value);
-        }
-        return vert;
     }
 
     @Override
@@ -578,6 +542,12 @@ public class InMemoryDBConnection implements DBConnectionAlignment, DBConnection
     public void buildIndex(String indexConfig) {
         // NO-OP
         
+    }
+    
+    @Override
+    protected void setPropertyInDB(String id, String key, Object newValue) {
+        
+        vertices.get(id).put(key, newValue);
     }
 
 }

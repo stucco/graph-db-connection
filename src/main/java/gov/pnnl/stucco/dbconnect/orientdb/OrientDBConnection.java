@@ -28,13 +28,14 @@ import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
 import gov.pnnl.stucco.dbconnect.Condition;
+import gov.pnnl.stucco.dbconnect.DBConnectionBase;
 import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
-public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTestInterface, DBConnectionIndexerInterface {
+public class OrientDBConnection extends DBConnectionBase {
    
     private OrientGraph graphDB = null;
     private Logger logger = null;
@@ -42,7 +43,6 @@ public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTe
     private Map<String, String> vertIDCache; //TODO could really split this into a simple cache class.
     private Set<String> vertIDCacheRecentlyRead;
     private static int VERT_ID_CACHE_LIMIT = 10000;
-    private Map<String,String> cardinalityCache = new HashMap<String, String>(200);
     private static String[] HIGH_FORWARD_DEGREE_EDGE_LABELS = {"hasFlow"}; //TODO: update as needed.  Knowing these allows some queries to be optimized.
 
     
@@ -66,121 +66,68 @@ public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTe
 
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+//    @SuppressWarnings({ "rawtypes", "unchecked" })
+//    private void updateVertProperty(String id, String key, Object val) throws OCommandExecutionException{ 
+//        String cardinality = findCardinality(id, key, val);
+//        
+//        if (key.equals("_properties")) {
+//            return;
+//        }
+//
+//        if (cardinality.equals("SET")) {
+//            // At this point, we assume it's in List form
+//            
+//            Map<String, Object> queryRetValue = getVertByID(id);
+//            if (queryRetValue == null) {
+//                // Handle how?
+//            }
+//            
+//            Object obj = convertMultiValueToList(val);
+//            List newValue;
+//            if (obj instanceof List) {
+//                newValue = (List) obj;
+//            }
+//            else {
+//                newValue = Collections.singletonList(obj);
+//            }
+//            
+//            List currentList = (List)queryRetValue.get(key);
+//
+//            if(currentList == null) {
+//                // no value existed in the DB
+//                val = newValue;
+//            } else {
+//                Set currentSet = new HashSet(currentList);
+//                for (Object currVal : newValue) {
+//                    if (!currentSet.contains(currVal)) {
+//                        currentSet.add(currVal);
+//                        currentList.add(currVal);
+//                    }
+//                }
+//                val = currentList;
+//            }
+//        }
+//
+//        String query = String.format("SELECT FROM %s",id);
+//        List<OrientVertex> verts = this.getVerticesFromQuery(query);
+//        if(!verts.isEmpty()) {
+//            verts.get(0).setProperty(key, val);
+//        }
+//    }
     private void updateVertProperty(String id, String key, Object val) throws OCommandExecutionException{ 
-        String cardinality = findCardinality(id, key, val);
-        if(cardinality == null){
-            cardinality = "SINGLE";
-            cardinalityCache.put(key, cardinality);
-        }
-        
-        if (key.equals("_properties")) {
-            return;
-        }
+        updateVertexProperty(id, key, val);
+    }
 
-        if (cardinality.equals("SET")) {
-            // At this point, we assume it's in List form
-            
-            Map<String, Object> queryRetValue = getVertByID(id);
-            if (queryRetValue == null) {
-                // Handle how?
-            }
-            
-            Object obj = convertMultiValueToList(val);
-            List newValue;
-            if (obj instanceof List) {
-                newValue = (List) obj;
-            }
-            else {
-                newValue = Collections.singletonList(obj);
-            }
-            
-            List currentList = (List)queryRetValue.get(key);
 
-            if(currentList == null) {
-                // no value existed in the DB
-                val = newValue;
-            } else {
-                Set currentSet = new HashSet(currentList);
-                for (Object currVal : newValue) {
-                    if (!currentSet.contains(currVal)) {
-                        currentSet.add(currVal);
-                        currentList.add(currVal);
-                    }
-                }
-                val = currentList;
-            }
-        }
-
+    @Override
+    protected void setPropertyInDB(String id, String key, Object newValue) {
         String query = String.format("SELECT FROM %s",id);
         List<OrientVertex> verts = this.getVerticesFromQuery(query);
         if(!verts.isEmpty()) {
-            verts.get(0).setProperty(key, val);
+            verts.get(0).setProperty(key, newValue);
         }
-    }
-    
-    /**
-     * returns cardinality of property "key" from vertex id.  If not found, returns null.
-     */
-    private String findCardinality(String id, String key, Object val) throws OCommandExecutionException {
-        String cardinality;
-
-        cardinality = cardinalityCache.get(key);
-        if(cardinality == null){
-            if(isMultipleCardinality(val)){
-                cardinality = "SET";
-                cardinalityCache.put(key, cardinality);
-            } else {
-                // go to DB to see if it has this property, from this vertex id
-                Map<String, Object> queryRetMap = getVertByID(id);  
-                if (queryRetMap != null) {
-                    Object dbVal = queryRetMap.get(key);
-                    if (dbVal != null) {
-                        if(isMultipleCardinality(dbVal)){
-                            cardinality = "SET";
-                        }
-                        else {
-                            cardinality = "SINGLE";
-                        }
-                        cardinalityCache.put(key, cardinality);
-                    }
-                } 
-            }
-        }
-        return cardinality;
     }
 
-    /** Gets whether the value's data type supports a cardinality of "SET". */
-    private boolean isMultipleCardinality(Object value) {
-        return (value != null && (value instanceof JSONArray || value instanceof Set || value instanceof List || value instanceof Object[]));
-    }
-    
-    /**
-     * Converts multi-valued Object to List, but leaves other Objects alone.
-     */
-    private Object convertMultiValueToList(Object value) {
-        
-        List newValue = new ArrayList();
-        if (value instanceof Set) {
-            newValue = new ArrayList((Set) value);
-        }
-        else if (value instanceof JSONArray ) {
-            for(int i=0; i<((JSONArray)value).length(); i++){
-                Object currVal = ((JSONArray)value).get(i);
-                newValue.add(currVal);
-            }
-        }
-        else if(value instanceof Object[]) {
-            for(int i=0; i<((Object[])value).length; i++){ 
-                Object currVal = ((Object[])value)[i];
-                newValue.add(currVal);
-            }
-        } else {
-            return value;
-        }
-        
-        return newValue;
-    }
 
     /** 
      * Runs SQL query to get vertices.
@@ -213,32 +160,7 @@ public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTe
         
         return obj;
     }
-    
-    @Override
-    public Map<String, Object> jsonVertToMap(JSONObject v) {
-        Map<String, Object> vert = new HashMap<String, Object>();
-        for(Object k : v.keySet()){
-            String key = (String) k;
-            Object value = v.get(key);
-            if(value instanceof JSONArray){
-                value = jsonArrayToList((JSONArray)value);
-            }
-            else if(value instanceof JSONObject){
-                logger.warn("jsonVertToMap: unexpected property type: JSONObject for property " + key + "\n" + v);
-            }
-            vert.put(key, value);
-        }
-        return vert;
-    }
 
-    //see Align class
-    private List<Object> jsonArrayToList(JSONArray a){
-        List<Object> l = new ArrayList<Object>();
-        for(int i=0; i<a.length(); i++){
-            l.add(a.get(i));
-        }
-        return l;
-    }
     
     /** 
      * {@inheritDoc}
@@ -353,15 +275,8 @@ public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTe
             properties.put("name", name);
         }
         
-        //convert any multi-valued properties to a list form.
-        for(Map.Entry<String, Object> entry : properties.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            Object newValue = convertMultiValueToList(value);
-            if(newValue != value) {
-                properties.put(key, newValue);
-            }
-        }
+        //convert any multi-valued properties to a set form.
+        convertAllMultiValuesToSet(properties);
         properties.remove("_properties");
 
         properties.remove("_id"); //Some graphDB servers will ignore this ID, some won't.  Just remove them so it's consistent.
@@ -375,17 +290,21 @@ public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTe
         if(constraints == null || constraints.size() == 0)
             return null;
 
-        Map<String, Object> param = new HashMap<String, Object>();
         String query = String.format("SELECT FROM V where ");
         for(int i=0; i<constraints.size(); i++){
             DBConstraint c = constraints.get(i);
             String cond = c.condString(c.getCond());
-            String key = c.getProp().toUpperCase()+i;
-            param.put(key, c.getVal());
+            String key = c.getProp();
+            Object value = c.getVal();
+
             if(i > 0 ) {
                 query += " AND ";
             }
-            query += String.format(" %s %s '%s' ", c.getProp(), cond, c.getVal());
+            if(value instanceof String) {
+                query += String.format(" %s %s '%s' ", key, cond, value); 
+            } else {
+                query += String.format(" %s %s %s ", key, cond, value);
+            }
         }
         
         List<OrientVertex> verts = this.getVerticesFromQuery(query);
@@ -642,6 +561,7 @@ public class OrientDBConnection implements DBConnectionAlignment, DBConnectionTe
     @Override
     public void buildIndex(String indexConfig) throws IOException {
         IndexDefinitionsToOrientDB loader = new IndexDefinitionsToOrientDB();
+        loader.setDBConnection(this);
         loader.parse(new File(indexConfig));
         
     }
