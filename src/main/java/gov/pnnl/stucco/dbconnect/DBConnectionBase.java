@@ -50,7 +50,7 @@ public abstract class DBConnectionBase implements DBConnectionAlignment, DBConne
                 } 
             }
         } else {
-            
+            //???  do we throw an exception?
         }
         if(cardinality == null){
             cardinality = "SINGLE";
@@ -129,7 +129,6 @@ public abstract class DBConnectionBase implements DBConnectionAlignment, DBConne
 
     }
     
-
     /**
      * inserts this properties new value into the specified vertex ID and key
      * @param id

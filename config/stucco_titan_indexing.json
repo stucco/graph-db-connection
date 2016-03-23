@@ -1,0 +1,230 @@
+{
+  "indexes": [
+    {
+      "type": "composite",
+      "keys": [
+        {
+          "name": "name",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "composite",
+      "keys": [
+        {
+          "name": "vertexType",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "composite",
+      "keys": [
+        {
+          "name": "source",
+          "class": "String",
+          "cardinality": "SET"
+        }
+      ]    
+    },
+    {
+      "type": "composite",
+      "keys": [
+        {
+          "name": "nvdId",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "composite",
+      "keys": [
+        {
+          "name": "countryCode",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "composite",
+      "keys": [
+        {
+          "name": "countryName",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "DummyVariableES",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "phaseDate",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "modifiedDate",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "publishedDate",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "discoveryDate",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "signatureDate",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "startTime",
+          "class": "Long"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "description",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "shortDescription",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "solution",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "ipInt",
+          "class": "Integer"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "startIP",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "startIPInt",
+          "class": "Integer"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "endIP",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "endIPInt",
+          "class": "Integer"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "details",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "removal",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "behavior",
+          "class": "String"
+        }
+      ]    
+    },
+    {
+      "type": "mixed",
+      "keys": [
+        {
+          "name": "overview",
+          "class": "String"
+        }
+      ]    
+    }
+  ]
+}

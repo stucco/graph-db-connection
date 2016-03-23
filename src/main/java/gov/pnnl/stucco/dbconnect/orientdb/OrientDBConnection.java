@@ -39,14 +39,14 @@ public class OrientDBConnection extends DBConnectionBase {
    
     private OrientGraph graphDB = null;
     private Logger logger = null;
-    private Map<String, String> configuration = new HashMap<String,String>();
+    private Map<String, Object> configuration = new HashMap<String,Object>();
     private Map<String, String> vertIDCache; //TODO could really split this into a simple cache class.
     private Set<String> vertIDCacheRecentlyRead;
     private static int VERT_ID_CACHE_LIMIT = 10000;
     private static String[] HIGH_FORWARD_DEGREE_EDGE_LABELS = {"hasFlow"}; //TODO: update as needed.  Knowing these allows some queries to be optimized.
 
     
-    public OrientDBConnection(Map<String, String> configuration) {
+    public OrientDBConnection(Map<String, Object> configuration) {
         this.configuration.putAll(configuration);
         logger = LoggerFactory.getLogger(OrientDBConnection.class);
         vertIDCache = new HashMap<String, String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
@@ -66,54 +66,6 @@ public class OrientDBConnection extends DBConnectionBase {
 
     }
 
-//    @SuppressWarnings({ "rawtypes", "unchecked" })
-//    private void updateVertProperty(String id, String key, Object val) throws OCommandExecutionException{ 
-//        String cardinality = findCardinality(id, key, val);
-//        
-//        if (key.equals("_properties")) {
-//            return;
-//        }
-//
-//        if (cardinality.equals("SET")) {
-//            // At this point, we assume it's in List form
-//            
-//            Map<String, Object> queryRetValue = getVertByID(id);
-//            if (queryRetValue == null) {
-//                // Handle how?
-//            }
-//            
-//            Object obj = convertMultiValueToList(val);
-//            List newValue;
-//            if (obj instanceof List) {
-//                newValue = (List) obj;
-//            }
-//            else {
-//                newValue = Collections.singletonList(obj);
-//            }
-//            
-//            List currentList = (List)queryRetValue.get(key);
-//
-//            if(currentList == null) {
-//                // no value existed in the DB
-//                val = newValue;
-//            } else {
-//                Set currentSet = new HashSet(currentList);
-//                for (Object currVal : newValue) {
-//                    if (!currentSet.contains(currVal)) {
-//                        currentSet.add(currVal);
-//                        currentList.add(currVal);
-//                    }
-//                }
-//                val = currentList;
-//            }
-//        }
-//
-//        String query = String.format("SELECT FROM %s",id);
-//        List<OrientVertex> verts = this.getVerticesFromQuery(query);
-//        if(!verts.isEmpty()) {
-//            verts.get(0).setProperty(key, val);
-//        }
-//    }
     private void updateVertProperty(String id, String key, Object val) throws OCommandExecutionException{ 
         updateVertexProperty(id, key, val);
     }
@@ -127,7 +79,6 @@ public class OrientDBConnection extends DBConnectionBase {
             verts.get(0).setProperty(key, newValue);
         }
     }
-
 
     /** 
      * Runs SQL query to get vertices.
@@ -160,7 +111,6 @@ public class OrientDBConnection extends DBConnectionBase {
         
         return obj;
     }
-
     
     /** 
      * {@inheritDoc}
@@ -181,31 +131,10 @@ public class OrientDBConnection extends DBConnectionBase {
         if(vertexList.isEmpty()){
             return null;
         }
-        
-        return addPropertiesKey(vertexList).get(0);
+        Map<String,Object> propertyMap = vertexList.get(0).getProperties();
+        return propertyMap;
     }
 
-    /**
-     *TODO: (SJB) determine if we need to do this anymore?
-     * Adds the "_properties" key to the map that is copy of the original map.
-     * 
-     * @param vertexList
-     * 
-     * @return  List of a Map of properties (or an empty list if no vertices)
-     */
-    private List<Map<String, Object>> addPropertiesKey(List<OrientVertex> vertexList)
-    {
-        List<Map<String,Object>> listPropertyMap = new ArrayList<Map<String,Object>>();
-        Map<String, Object> propertyMap = null;
-        for (OrientVertex v : vertexList) {
-            propertyMap = v.getProperties();
-            Map<String,Object> existingProperties = new HashMap<String, Object>(propertyMap);
-            propertyMap.put("_properties", existingProperties);
-            listPropertyMap.add(propertyMap);
-        }
-        return listPropertyMap;
-    }
-    
     @Override
     public Map<String, Object> getVertByName(String name){
         if(name == null || name.isEmpty())
@@ -219,8 +148,10 @@ public class OrientDBConnection extends DBConnectionBase {
         }else if(vertexList.size() > 1){
             logger.warn("findVert found more than 1 matching verts for name: " + name + " so returning the first item.");
         }
+        
+        Map<String,Object> propertyMap = vertexList.get(0).getProperties();
 
-        return addPropertiesKey(vertexList).get(0);
+        return propertyMap;
     }
 
     /**
@@ -269,17 +200,13 @@ public class OrientDBConnection extends DBConnectionBase {
     @Override
     public String addVertex(Map<String, Object> properties) {
         String name = (String)properties.get("name");
-        String id = (String)properties.get("_id");
         if(name == null || name.isEmpty()){
-            name = id;
-            properties.put("name", name);
+            String msg = String.format("cannot add vertex with missing or invalid vertID");
+            throw new IllegalArgumentException(msg);
         }
         
         //convert any multi-valued properties to a set form.
         convertAllMultiValuesToSet(properties);
-        properties.remove("_properties");
-
-        properties.remove("_id"); //Some graphDB servers will ignore this ID, some won't.  Just remove them so it's consistent.
         OrientVertex v = graphDB.addVertex("class:V", properties);
         graphDB.commit();
         return v.getId().toString();
@@ -518,7 +445,7 @@ public class OrientDBConnection extends DBConnectionBase {
 
         try {
             // extract configuration for the DB of interest
-            String dbName = configuration.get("graph-name");
+            String dbName = (String)configuration.get("graph-name");
             graphDB = new OrientGraph(dbName);
         } catch (Exception e) {
             logger.warn(e.getLocalizedMessage());

@@ -6,6 +6,7 @@ package gov.pnnl.stucco.dbconnect;
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnection;
 import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnectionFactory;
+import gov.pnnl.stucco.dbconnect.titan.TitanDBConnectionFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,7 +36,7 @@ public abstract class DBConnectionFactory {
     }
     
     /** configuration information for the DB we will be using */
-    protected Map<String,String> configuration = new HashMap<String,String>();
+    protected Map<String,Object> configuration = new HashMap<String,Object>();
 
     /**
      * Base Constructor, but everything will happen in the concrete classes
@@ -58,7 +59,7 @@ public abstract class DBConnectionFactory {
             case ORIENTDB:
                 return new OrientDBConnectionFactory();
             case TITAN:
-                break;
+                return new TitanDBConnectionFactory();
             default:
                 break;
         }
@@ -70,7 +71,7 @@ public abstract class DBConnectionFactory {
      * options are in a flat structure
      * @param configuration
      */
-    protected void setConfiguration(Map<String, String> configuration) {
+    protected void setConfiguration(Map<String, Object> configuration) {
         this.configuration.clear();
         this.configuration.putAll(configuration);
     }
@@ -81,7 +82,7 @@ public abstract class DBConnectionFactory {
      * @param configFilename
      */
     public void setConfiguration(String configFilename) {
-        Map<String, String> configuration = dbConfigFromFile(configFilename);
+        Map<String, Object> configuration = dbConfigFromFile(configFilename);
         this.setConfiguration(configuration);
     }
 
@@ -110,10 +111,10 @@ public abstract class DBConnectionFactory {
      * @return
      */
     @SuppressWarnings("unchecked")
-    private static Map<String, String> dbConfigFromFile(String configFilePath){
+    private static Map<String, Object> dbConfigFromFile(String configFilePath){
         File configFile = new File(configFilePath);
         Map<String, Object> fullConfigMap = configMapFromFile(configFile);
-        Map<String, String> dbConfigMap = (Map<String, String>) fullConfigMap.get("database_connection");
+        Map<String, Object> dbConfigMap = (Map<String, Object>) fullConfigMap.get("database_connection");
 
         return dbConfigMap;
     }
