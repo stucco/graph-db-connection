@@ -11,6 +11,8 @@ public enum Condition {
     neq,    // not equal to
     lte,    // less than or equal to
     lt,     // less than
-    in,     // inside (set operation)
-    notin   // not inside (set operation)
+    //in,     // inside (set operation)
+    //notin   // not inside (set operation)
+    contains,   // item in a set
+    substring   // substring in a string 
 }

@@ -38,8 +38,8 @@ public class InMemoryConstraint extends DBConstraintBase {
 		if(c == Condition.gte) return "T.gte";
 		if(c == Condition.lt) return "T.lt";
 		if(c == Condition.lte) return "T.lte";
-		if(c == Condition.in) return "T.in";
-		if(c == Condition.notin) return "T.notin";
+		if(c == Condition.contains) return "T.contains";
+		if(c == Condition.substring) return "T.substring";
 		return null;
 	}
 	
