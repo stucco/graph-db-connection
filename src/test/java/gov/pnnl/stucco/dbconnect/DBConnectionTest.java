@@ -184,44 +184,71 @@ extends TestCase
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
 
+        //get some properties
         String id = conn.getVertIDByName("testvert_55");
-
         Map<String, Object> vertProps = conn.getVertByID(id);
         assertEquals( "55", vertProps.get("endIPInt").toString());
         assertEquals( "[aaaa]", vertProps.get("source").toString());
-
         Map<String, Object> newProps = new HashMap<String, Object>();
-        newProps.put("source", new String[] {"aaaa"});
-        conn.updateVertex(id, newProps);
 
+        //add a single item to a set-type property - throws an exception
+        newProps.put("source", "zzzz");
+        boolean thrown = false;
+        try {
+            conn.updateVertex(id, newProps);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+        }
+        assertTrue(thrown);
+
+        //confirm nothing changed during above.
         vertProps = conn.getVertByID(id);
         assertEquals( "55", vertProps.get("endIPInt").toString());
         assertEquals( "[aaaa]", vertProps.get("source").toString());
-//        assertEquals( "aaaa", vertProps.get("source").toString());
 
+        //update an int property, add a new int property
         newProps = new HashMap<String, Object>();
         newProps.put("startIPInt", "33");
         newProps.put("endIPInt", "44");
-        newProps.put("source", new String[] {"bbbb"});
         conn.updateVertex(id, newProps);
-
         vertProps = conn.getVertByID(id);
         assertEquals("33", vertProps.get("startIPInt").toString());
         assertEquals("44", vertProps.get("endIPInt").toString());
 
-        newProps = new HashMap<String, Object>();
-        String[] sourceArray = {"cccc", "dddd"};
-        newProps.put("source", sourceArray);
+        //adding a one-item set to the set-type property
+        Set<String> tempSet = new HashSet<String>();
+        tempSet.add("bbbb");
+        newProps.put("source", tempSet);
         conn.updateVertex(id, newProps);
-
         vertProps = conn.getVertByID(id);
-        Set<String> sourceSet = new HashSet<String>();
-        sourceSet.add("aaaa");
-        sourceSet.add("bbbb");
-        sourceSet.add("cccc");
-        sourceSet.add("dddd");
-        assertEquals(sourceSet, vertProps.get("source"));
+        Set<String> expectedSources = new HashSet<String>( Arrays.asList("aaaa", "bbbb" ) );
+        assertEquals(expectedSources, vertProps.get("source"));
 
+        //add a List of things to the set-type property, some of which are redundant
+        newProps = new HashMap<String, Object>();
+        List<String> sourceList = new ArrayList<String>();
+        sourceList.add("aaaa");
+        sourceList.add("eeee");
+        sourceList.add("aaaa");
+        sourceList.add("ffff");
+        sourceList.add("aaaa");
+        sourceList.add("bbbb");
+        newProps.put("source", sourceList);
+        conn.updateVertex(id, newProps);
+        vertProps = conn.getVertByID(id);
+        expectedSources = new HashSet<String>( Arrays.asList("aaaa", "bbbb", "eeee", "ffff" ) );
+        assertEquals(expectedSources, vertProps.get("source"));
+
+        //add an Array of things to the set-type property, some of which are redundant
+        newProps = new HashMap<String, Object>();
+        String[] sourceArr = new String[]{ "aaaa", "aaaa", "aaaa", "eeee", "hhhh", "gggg"};
+        newProps.put("source", sourceArr);
+        conn.updateVertex(id, newProps);
+        vertProps = conn.getVertByID(id);
+        expectedSources = new HashSet<String>( Arrays.asList("aaaa", "bbbb", "eeee", "ffff", "gggg", "hhhh" ) );
+        assertEquals(expectedSources, vertProps.get("source"));
+
+        //conn.removeAllVertices();
     }
 
     /**
