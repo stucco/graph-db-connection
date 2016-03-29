@@ -64,8 +64,6 @@ extends TestCase
     {
         InMemoryDBConnection conn = new InMemoryDBConnection();
 
-        //conn.removeAllVertices(); // when all vertices are removed all edges are dropped
-
         String vert1 = "{" +
                 "\"name\":\"CVE-1999-0002\"," +
                 "\"_type\":\"vertex\","+
@@ -95,20 +93,19 @@ extends TestCase
         //find this node, check some properties.
         String id = conn.getVertIDByName("CVE-1999-0002");
         Map<String, Object> vertProps = conn.getVertByID(id);
-        String[] expectedRefs = {"CERT:CA-98.12.mountd","XF:linux-mountd-bo","http://www.ciac.org/ciac/bulletins/j-006.shtml","http://www.securityfocus.com/bid/121"};
-        String[] actualRefs = ((ArrayList<String>)vertProps.get("references")).toArray(new String[0]);
-        assertTrue(expectedRefs.length == actualRefs.length);
-        Arrays.sort(expectedRefs);
-        Arrays.sort(actualRefs);
-        assertTrue(Arrays.equals(expectedRefs, actualRefs));
+        String[] expectedStrs = {"CERT:CA-98.12.mountd","XF:linux-mountd-bo","http://www.ciac.org/ciac/bulletins/j-006.shtml","http://www.securityfocus.com/bid/121"};
+        Set expectedRefs = new HashSet(Arrays.asList(expectedStrs));
+        Set<String> actualRefs = ((Set<String>)vertProps.get("references"));
+        assertTrue(actualRefs.equals(expectedRefs));
 
         //find the other node, check its properties.
         String id2 = conn.getVertIDByName("CVE-1999-nnnn");
         vertProps = (Map<String,Object>)conn.getVertByName("CVE-1999-nnnn");
         assertEquals("test description asdf.", vertProps.get("description"));
-        expectedRefs = new String[]{"http://www.google.com"};
-        actualRefs = ((ArrayList<String>)vertProps.get("references")).toArray(new String[0]);
-        assertTrue(Arrays.equals(expectedRefs, actualRefs));
+        expectedRefs = new HashSet();
+        expectedRefs.add("http://www.google.com");
+        actualRefs = (Set<String>)vertProps.get("references");
+        assertTrue(actualRefs.equals(expectedRefs));
 
         //There should be no edge between them
         assertEquals(0, conn.getEdgeCountByRelation(id, id2, "sameAs"));
@@ -133,7 +130,6 @@ extends TestCase
         assertEquals(1, matchingIDs.size());
         assertEquals(id2, matchingIDs.get(0));
 
-        //conn.removeAllVertices();
     }
 
 
@@ -143,8 +139,6 @@ extends TestCase
     public void testUpdate()
     {
         InMemoryDBConnection conn = new InMemoryDBConnection();
-
-        //conn.removeAllVertices();
 
         String vert1 = "{"+
                 "\"endIPInt\":55," +
@@ -218,7 +212,6 @@ extends TestCase
         expectedSources = new HashSet<String>( Arrays.asList("aaaa", "bbbb", "eeee", "ffff", "gggg", "hhhh" ) );
         assertEquals(expectedSources, vertProps.get("source"));
 
-        //conn.removeAllVertices();
     }
 
     /**
@@ -227,8 +220,6 @@ extends TestCase
     public void testHighForwardDegreeVerts()
     {
         InMemoryDBConnection conn = new InMemoryDBConnection();
-
-        //conn.removeAllVertices();
 
         String vert1 = "{" +
                 "\"name\":\"/usr/local/something\"," +
@@ -291,8 +282,6 @@ extends TestCase
     public void testHighReverseDegreeVerts()
     {
         InMemoryDBConnection conn = new InMemoryDBConnection();
-
-        //conn.removeAllVertices();
 
         String vert1 = "{" +
                 "\"name\":\"11.11.11.11:1111\"," +

@@ -93,8 +93,6 @@ extends TestCase
     public void testLoad()
     {
 
-        //conn.removeAllVertices(); // when all vertices are removed all edges are dropped
-
         String vert1 = "{" +
                 "\"name\":\"CVE-1999-0002\"," +
                 "\"_type\":\"vertex\","+
@@ -127,7 +125,6 @@ extends TestCase
         Map<String, Object> vertProps = conn.getVertByID(id);
         String[] expectedStrs = {"CERT:CA-98.12.mountd","XF:linux-mountd-bo","http://www.ciac.org/ciac/bulletins/j-006.shtml","http://www.securityfocus.com/bid/121"};
         Set expectedRefs = new HashSet(Arrays.asList(expectedStrs));
-
         Set actualRefs = (Set)(vertProps.get("references"));
         assertTrue(expectedRefs.equals(actualRefs));
 
@@ -163,7 +160,6 @@ extends TestCase
         assertEquals(1, matchingIDs.size());
         assertEquals(id2, matchingIDs.get(0));
 
-        //conn.removeAllVertices();
     }
 
 
@@ -172,9 +168,6 @@ extends TestCase
      */
     public void testUpdate()
     {
-        //		InMemoryDBConnection conn = new InMemoryDBConnection();
-
-        //conn.removeAllVertices();
 
         String vert1 = "{"+
                 "\"endIPInt\":55," +
@@ -248,7 +241,6 @@ extends TestCase
         expectedSources = new HashSet<String>( Arrays.asList("aaaa", "bbbb", "eeee", "ffff", "gggg", "hhhh" ) );
         assertEquals(expectedSources, vertProps.get("source"));
 
-        //conn.removeAllVertices();
     }
 
     /**
@@ -256,9 +248,6 @@ extends TestCase
      */
     public void testHighForwardDegreeVerts()
     {
-        //		InMemoryDBConnection conn = new InMemoryDBConnection();
-
-        //conn.removeAllVertices();
 
         String vert1 = "{" +
                 "\"name\":\"/usr/local/something\"," +
@@ -320,9 +309,6 @@ extends TestCase
      */
     public void testHighReverseDegreeVerts()
     {
-        //		InMemoryDBConnection conn = new InMemoryDBConnection();
-
-        //conn.removeAllVertices();
 
         String vert1 = "{" +
                 "\"name\":\"11.11.11.11:1111\"," +
@@ -385,7 +371,6 @@ extends TestCase
      */
     public void testConstraints()
     {
-        //		InMemoryDBConnection conn = new InMemoryDBConnection();
         Map<String, Object> vert;
         List<DBConstraint> constraints;
         String id;
