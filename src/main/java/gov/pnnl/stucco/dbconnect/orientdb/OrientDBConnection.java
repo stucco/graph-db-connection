@@ -53,6 +53,18 @@ public class OrientDBConnection extends DBConnectionBase {
         vertIDCacheRecentlyRead = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
 
     }
+    
+    @Override
+    public int getVertCount(){
+    	//TODO: implement
+    	return 0;
+    }
+
+    @Override
+    public int getEdgeCount(){
+    	//TODO: implement
+    	return 0;
+    }
 
     @Override
     public void updateVertex(String id, Map<String, Object> properties)
@@ -349,6 +361,18 @@ public class OrientDBConnection extends DBConnectionBase {
             throw new IllegalArgumentException(msg);
         }
     }
+    
+    @Override
+    public List<Map<String, Object>> getOutEdges(String outVertID){
+    	//TODO: implement
+    	return null;
+    }
+    
+    @Override
+    public List<Map<String, Object>> getInEdges(String inVertID){
+    	//TODO: implement
+    	return null;
+    }
 
     @Override
     public List<String> getInVertIDsByRelation(String outVertID, String relation) {
@@ -564,6 +588,16 @@ public class OrientDBConnection extends DBConnectionBase {
         loader.setDBConnection(this);
         loader.parse(new File(indexConfig));
         
+    }
+
+    @Override
+    public void loadState(String filePath){
+    	//TODO: implement
+    }
+
+    @Override
+    public void saveState(String filePath){
+    	//TODO: implement
     }
     
     /**
