@@ -14,6 +14,18 @@ import java.util.List;
 public interface DBConnectionAlignment {
 
     /**
+     * return the number of vertices
+     * @return count
+     */
+    public int getVertCount();
+
+    /**
+     * return the number of edges
+     * @return count
+     */
+    public int getEdgeCount();
+
+    /**
      * Retrieves the vertex's property map as referenced by the vertex ID
      * @param id as per the DB
      * @return a property map of the vertex, user must know based on the key how to recast the object type to use its value
@@ -55,6 +67,20 @@ public interface DBConnectionAlignment {
      * @param relation - relationship type
      */
     public void addEdge(String v1, String v2, String relation);
+
+    /**
+     * returns list of edge info maps for the outgoing edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getOutEdges(String outVertID);
+
+    /**
+     * returns list of edge info maps for the incoming edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getInEdges(String inVertID);
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
