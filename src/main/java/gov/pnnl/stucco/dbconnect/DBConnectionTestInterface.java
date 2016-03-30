@@ -30,4 +30,14 @@ public interface DBConnectionTestInterface extends DBConnectionIndexerInterface 
      * remove all vertices in the databases
      */
     public void removeAllVertices();
+    
+    /**
+     * load db state from the specified file
+     */
+    public void loadState(String filePath);
+
+    /**
+     * save db state to the specified file
+     */
+    public void saveState(String filePath);
 }
