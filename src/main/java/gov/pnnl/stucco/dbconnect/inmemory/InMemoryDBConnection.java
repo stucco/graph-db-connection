@@ -1,6 +1,5 @@
 package gov.pnnl.stucco.dbconnect.inmemory;
 
-
 import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionBase;
 import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
@@ -8,6 +7,12 @@ import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -19,7 +24,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 
@@ -65,6 +72,22 @@ public class InMemoryDBConnection extends DBConnectionBase{
     }
 
     /**
+     * return the number of vertices
+     * @return count
+     */
+    public int getVertCount(){
+        return vertices.size();
+    }
+
+    /**
+     * return the number of edges
+     * @return count
+     */
+    public int getEdgeCount(){
+        return edges.size();
+    }
+
+    /**
      * return the vertex's property map given the vertex ID
      * @param vertID
      * @return property map
@@ -102,6 +125,44 @@ public class InMemoryDBConnection extends DBConnectionBase{
         return id;
     }
 
+    /**
+     * returns list of edge info maps for the outgoing edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getOutEdges(String outVertID) throws IllegalArgumentException{
+        if(outVertID == null || outVertID.equals("") || !vertices.containsKey(outVertID)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        List<Map<String, Object>> foundEdges = new LinkedList<Map<String, Object>>();
+        for(Map<String, Object> currEdge : edges.values()){
+            if( ((String)currEdge.get("outVertID")).equals(outVertID) ){
+                //inVertID = currEdge.get("inVertID");
+                //outVertID = currEdge.get("outVertID");
+                //relation = currEdge.get("relation");
+                foundEdges.add( currEdge );
+            }
+        }
+        return foundEdges;
+    }
+
+    /**
+     * returns list of edge info maps for the incoming edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getInEdges(String inVertID) throws IllegalArgumentException{
+        if(inVertID == null || inVertID.equals("") || !vertices.containsKey(inVertID)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+        }
+        List<Map<String, Object>> foundEdges = new LinkedList<Map<String, Object>>();
+        for(Map<String, Object> currEdge : edges.values()){
+            if( ((String)currEdge.get("inVertID")).equals(inVertID) ){
+                foundEdges.add( currEdge );
+            }
+        }
+        return foundEdges;
+    }
 
     /**
      * return a list of Incoming vertices based on their edge type relation
@@ -488,6 +549,101 @@ public class InMemoryDBConnection extends DBConnectionBase{
     protected void setPropertyInDB(String id, String key, Object newValue) {
         
         vertices.get(id).put(key, newValue);
+    }
+
+    public void loadState(String filePath) {
+        try {
+            InputStream is = new FileInputStream(filePath);
+            String textContents = IOUtils.toString( is );
+            is.close();
+
+            JSONObject contents = new JSONObject(textContents);
+            JSONObject vertsJSON = contents.getJSONObject("vertices");
+            JSONArray edgesJSON = contents.getJSONArray("edges");
+            //add vertices
+            for( Object id : vertsJSON.keySet() ) {
+                JSONObject jsonVert = vertsJSON.getJSONObject(id.toString());
+                String description = jsonVert.optString("description");
+                if(description != null && !description.equals("")){
+                    //This is kind of an odd workaround, to prevent ui from treating, eg, "URI: www.blah.com | Type: URL |" as a URL instead of a string.
+                    //TODO: this is really a problem in the UI, as far as we care it's still just a string either way.
+                    jsonVert.put("description", " " + description);
+                }else{
+                    //ui assumes everything has a description, this is a workaround to avoid having empty text in various places.
+                    jsonVert.put("description", jsonVert.optString("name"));
+                }
+                Map<String, Object> vert = jsonVertToMap(jsonVert);
+                vertices.put(id.toString(), vert);
+                String name = (String)vert.get("name");
+                vertIDs.put(name, id.toString() );
+                //System.out.println("loaded vertex named " + name + " with id: " + id); //for debugging
+            }
+            //add edges.
+            for( int i=0; i<edgesJSON.length(); i++ ) {
+                JSONObject edge = edgesJSON.getJSONObject(i);
+                try {
+                    String inVertID = edge.getString("inVertID");
+                    String outVertID = edge.getString("outVertID");
+                    String relation = edge.getString("relation");
+                    int matchingEdgeCount = getEdgeCountByRelation(inVertID, outVertID, relation);
+                    if(matchingEdgeCount == 0){
+                        addEdge(inVertID, outVertID, relation);
+                    }
+                } catch (JSONException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (IllegalArgumentException e) {
+                    // TODO Auto-generated catch block
+                    System.err.println("error when loading edge: " + edge);
+                    e.printStackTrace();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //TODO: tests
+    public void saveState(String filePath) {
+        try {
+            OutputStream os = new FileOutputStream(filePath);
+            PrintStream printStream = new PrintStream(os);
+            //printStream.print("String");
+
+            JSONObject vertsJSON = new JSONObject();
+            JSONArray edgesJSON = new JSONArray();
+
+            //add vertices
+            for( String id : vertices.keySet() ) {
+                Map<String, Object> vert = vertices.get(id);
+                JSONObject currEdge = new JSONObject();
+                for( String prop : vert.keySet() ){
+                    //TODO: confirm this handles sets properly
+                    currEdge.put(prop, vert.get(prop));
+                }
+                edgesJSON.put(currEdge);
+            }
+
+            //add edges.
+            for( String id : edges.keySet() ) {
+                Map<String, Object> edge = edges.get(id);
+                JSONObject currEdge = new JSONObject();
+                for( String prop : edge.keySet() ){
+                    currEdge.put(prop, edge.get(prop));
+                }
+                edgesJSON.put(currEdge);
+            }
+
+            JSONObject contents = new JSONObject();
+            contents.put("vertices", vertsJSON);
+            contents.put("edges", edgesJSON);
+
+            printStream.print(contents.toString(2));
+            printStream.close();
+            os.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
