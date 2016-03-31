@@ -40,8 +40,8 @@ public class OrientDBConnection extends DBConnectionBase {
     private OrientGraph graphDB = null;
     private Logger logger = null;
     private Map<String, String> configuration = new HashMap<String,String>();
-    private Map<String, String> vertIDCache; //TODO could really split this into a simple cache class.
-    private Set<String> vertIDCacheRecentlyRead;
+    //private Map<String, String> vertIDCache; //TODO could really split this into a simple cache class.
+    //private Set<String> vertIDCacheRecentlyRead;
     private static int VERT_ID_CACHE_LIMIT = 10000;
     private static String[] HIGH_FORWARD_DEGREE_EDGE_LABELS = {"hasFlow"}; //TODO: update as needed.  Knowing these allows some queries to be optimized.
 
@@ -49,8 +49,8 @@ public class OrientDBConnection extends DBConnectionBase {
     public OrientDBConnection(Map<String, String> configuration) {
         this.configuration.putAll(configuration);
         logger = LoggerFactory.getLogger(OrientDBConnection.class);
-        vertIDCache = new HashMap<String, String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
-        vertIDCacheRecentlyRead = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
+        //vertIDCache = new HashMap<String, String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
+        //vertIDCacheRecentlyRead = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
 
     }
     
@@ -218,6 +218,7 @@ public class OrientDBConnection extends DBConnectionBase {
         return listPropertyMap;
     }
     
+    /*
     @Override
     public Map<String, Object> getVertByName(String name){
         if(name == null || name.isEmpty())
@@ -234,12 +235,14 @@ public class OrientDBConnection extends DBConnectionBase {
 
         return addPropertiesKey(vertexList).get(0);
     }
+    */
 
     /**
      * {@inheritDoc}
      * <p>  function will check vertIDCache first, 
      * if id is not in there, then it is calling the findVert function
      */
+    /*
     @Override
     public String getVertIDByName(String name) {
         String id = vertIDCacheGet(name);
@@ -257,7 +260,9 @@ public class OrientDBConnection extends DBConnectionBase {
             return id;
         }
     }
+    */
     
+    /*
     private void vertIDCachePut(String name, String id){
         if(vertIDCache.size() >= VERT_ID_CACHE_LIMIT){
             logger.info("vertex id cache exceeded limit of " + VERT_ID_CACHE_LIMIT + 
@@ -277,6 +282,7 @@ public class OrientDBConnection extends DBConnectionBase {
         }
         
     }
+    */
 
     @Override
     public String addVertex(Map<String, Object> properties) {
@@ -465,6 +471,7 @@ public class OrientDBConnection extends DBConnectionBase {
     /*
      * Only used by removeAllVertices()
      */
+    /*
     private void removeCachedVertices(){
         //NB: this query is slow enough that connection can time out if the DB starts with many vertices.
 
@@ -475,12 +482,13 @@ public class OrientDBConnection extends DBConnectionBase {
         vertIDCache.clear();
         vertIDCacheRecentlyRead.clear();// = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
     }
+    */
     
     @Override
     public void removeVertByID(String id) {
         
         // remove the cached vertices
-        removeCachedVertices();
+        //removeCachedVertices();
         
         String query = String.format("DELETE VERTEX %s", id);
         executeSQL(query);
@@ -568,7 +576,7 @@ public class OrientDBConnection extends DBConnectionBase {
     public void removeAllVertices() {
         
         // remove the cached vertices
-        removeCachedVertices();
+        //removeCachedVertices();
 
         //NB: this query is slow enough that connection can time out if the DB starts with many vertices.
         String query = String.format("DELETE VERTEX V");
