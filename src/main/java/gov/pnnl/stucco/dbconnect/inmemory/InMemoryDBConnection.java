@@ -45,7 +45,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
     private Map<String, Map<String, Object>> vertices = null;
 
     /** contains a mapping of vertexIDs to the actual vertex canonical name*/
-    private Map<String, String> vertIDs = null;
+    //private Map<String, String> vertIDs = null;
 
     /** 
      * contains a map of edges and their properties.
@@ -56,19 +56,25 @@ public class InMemoryDBConnection extends DBConnectionBase{
     private Map<String, Map<String, Object>> edges = null; //TODO: make/use an Edge class, to store inV, outV, label?  And maybe index that.
 
     //private Map<String, String> edgeIDs = null; //edges don't have meaningful names.
-    /** which property names are indexed*/
-    private Set<String> indexedVertFields = null; //TODO: not maintaining any indexed fields for now, add later if desired.
+    
+    /** 
+     * Index of vert fields.
+     * This is a map the field name to a map of values to matching IDs
+     * (eg. "name" -> some vertex name -> set of vert ID(s) which have that name)
+     */
+    private Map<String, Map<String, Set<String>>> indexedVertFields = null;
 
     /**
      * Constructor of an InMemory type of DB Connection
      */
     public InMemoryDBConnection(){
         vertices = new HashMap<String, Map<String, Object>>();
-        vertIDs = new HashMap<String, String>();
+        //vertIDs = new HashMap<String, String>();
         edges = new HashMap<String, Map<String, Object>>();
         //edgeIDs = new HashMap<String, String>(); //edges don't have meaningful names.
-        indexedVertFields = new HashSet<String>();
-        //TODO: initialize any indexes.
+        indexedVertFields = new HashMap<String, Map<String, Set<String>>>();
+        //initialize any indexes.
+        indexedVertFields.put("name", new HashMap<String, Set<String>>());
     }
 
     /**
@@ -94,35 +100,6 @@ public class InMemoryDBConnection extends DBConnectionBase{
      */
     public Map<String, Object> getVertByID(String vertID){
         return vertices.get(vertID);
-    }
-
-    /**
-     * get the vertex's property map using the vertex's canonical name
-     * @param vertName
-     * @return property map
-     */
-    public Map<String,Object> getVertByName(String vertName) {
-        if(vertName == null || vertName == "")
-            return null;
-        String id = vertIDs.get(vertName);
-        if(id == null)
-            return null;
-        Map<String, Object> retVal = vertices.get(id);
-        if(retVal == null)
-            throw new IllegalStateException("bad state: known vertex name has no known content.");
-        return retVal;
-    }
-
-    /**
-     * get the vertexID using the canonical name
-     * @param vertName
-     * @return ID
-     */
-    public String getVertIDByName(String vertName){
-        if(vertName == null || vertName == "")
-            return null;
-        String id = vertIDs.get(vertName);
-        return id;
     }
 
     /**
@@ -274,13 +251,29 @@ public class InMemoryDBConnection extends DBConnectionBase{
 
         //First, generate candidateIDs set.
         //Note that after candidateIDs is populated here, it will not be modified.
-        if(indexedVertFields.size() > 0){ //TODO: indices
+        //TODO: really, we want to create a set of candidate ids for each index used, then find the overlap,
+        //  then match against any constraints that weren't used.
+        boolean indicesUsed = false;
+        if(indexedVertFields.size() > 0){ //TODO: needs better test coverage for use of indices
             //This should use indexed fields to find candidateIDs, then find the nonMatchingIDs below as usual.
             //we need to decide if only exact matches are allowed, or if ranges & etc. are ok here.
             //also, somehow indicate that the constraints used here are 'done', so they aren't re-checked below.
             candidateIDs = new HashSet<String>();
+            for(DBConstraint c : constraints){
+                if(c.getCond() != Condition.eq)
+                    continue;
+                if(indexedVertFields.containsKey(c.getProp())){
+                    indicesUsed = true;
+                    Map<String, Set<String>> currIndex = indexedVertFields.get(c.getProp());
+                    String currValue = c.getVal().toString();
+                    Set<String> currSet = currIndex.get(currValue);
+                    if(currSet != null){
+                        candidateIDs.addAll(currSet);
+                    }
+                }
+            }
         }
-        if(candidateIDs == null){ 
+        if(!indicesUsed){
             //if no initial matchingIDs set was generated yet, use all IDs
             candidateIDs = vertices.keySet();
         }
@@ -391,16 +384,13 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param vertID
      */
     public void removeVertByID(String vertID){
-        Object nameObj = vertices.get(vertID).get("name");
-        if(nameObj == null || !(nameObj instanceof String) ){
-            throw new IllegalStateException("bad state: vertex must contain name field");
-        }
+        Map<String,Object> vert = vertices.get(vertID);
+        if(vert != null){
+            removeVertFromIndex(vert, vertID);
+            vertices.remove(vertID);
 
-        String name = (String)nameObj;
-        vertIDs.remove(name);
-        vertices.remove(vertID);
-        
-        //TODO: remove edges that contain this vertID!!!!!
+            //TODO: remove edges that contain this vertID!!!!!
+        }
     }
 
     /**
@@ -409,29 +399,44 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @return vertexID
      */
     public String addVertex(Map<String, Object> vert){
-        Object nameObj = vert.get("name");
-        if(nameObj == null || !(nameObj instanceof String) || ((String)nameObj).equals("") ){
-            throw new IllegalArgumentException("cannot add vertes with empty name field");
-        }//TODO check any other mandatory fields
-
-
-        
-        String name = (String)nameObj;
-        if(vertIDs.containsKey(name)){
-            removeVertByID(getVertIDByName(name));
-        }
-        String vertID = String.valueOf( UUID.randomUUID() );
-        vertIDs.put(name, vertID);
-        
         // make sure all multi-value properties are sets
         convertAllMultiValuesToSet(vert);
+        String vertID = String.valueOf( UUID.randomUUID() );
         vertices.put(vertID, vert);
-        //TODO: update any indices
+
+        //update any indices
+        addVertToIndex(vert, vertID);
+
         return vertID;
     }
 
+    private void addVertToIndex(Map<String, Object> vert, String vertID){
+        for(String prop : vert.keySet()){
+            if(indexedVertFields.containsKey(prop)){
+                Map<String, Set<String>> currIndex = indexedVertFields.get(prop);
+                String currValue = vert.get(prop).toString();
+                Set<String> currSet = currIndex.get(currValue);
+                if(currSet == null){
+                    currSet = new HashSet<String>();
+                    currIndex.put(currValue, currSet);
+                }
+                currSet.add(vertID);
+            }
+        }
+    }
+
+    private void removeVertFromIndex(Map<String, Object> vert, String vertID){
+        for(String prop : vert.keySet()){
+            if(indexedVertFields.containsKey(prop)){
+                Map<String, Set<String>> currIndex = indexedVertFields.get(prop);
+                String currValue = vert.get(prop).toString();
+                currIndex.get(currValue).remove(vertID);
+            }
+        }
+    }
+
     /**
-     * add and edge 
+     * add and edge
      * @param inVertID ID of the incoming vertex edge
      * @param outVertID - ID of the outgoing vertex edge
      * @param relation - type of edge relation
@@ -460,26 +465,22 @@ public class InMemoryDBConnection extends DBConnectionBase{
 
     /**
      * overwrite or add new properties to an existing vertex's property map
-     * @param VertID
+     * @param vertID
      * @param newVert - property map
      */
-    public void updateVertex(String VertID, Map<String, Object> newVert){
-        Map<String, Object> oldVert = vertices.get(VertID);
+    public void updateVertex(String vertID, Map<String, Object> newVert){
+        Map<String, Object> oldVert = vertices.get(vertID);
         if(oldVert == null){
             throw new IllegalArgumentException("invalid vertex ID");
         }
-        Object newVertName = newVert.remove("name");
-        Object oldVertName = oldVert.get("name");
-        if(newVertName != null && !(((String)newVertName).equals((String)oldVertName)) ){
-            throw new IllegalArgumentException("cannot update name of existing vertex");
-        }
 
+        removeVertFromIndex(oldVert, vertID);
         for(Map.Entry<String, Object> entry: newVert.entrySet()){
-            
             String key = entry.getKey();
             Object newValue = entry.getValue();
-            updateVertexProperty(VertID, key, newValue);
+            updateVertexProperty(vertID, key, newValue);
         }
+        addVertToIndex(newVert, vertID);
     }
 
     @Override
@@ -527,7 +528,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
     @Override
     public void removeAllVertices() {
         vertices.clear();
-        vertIDs.clear();
+        indexedVertFields.clear();
         edges.clear();
         
     }
@@ -575,7 +576,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
                 Map<String, Object> vert = jsonVertToMap(jsonVert);
                 vertices.put(id.toString(), vert);
                 String name = (String)vert.get("name");
-                vertIDs.put(name, id.toString() );
+                addVertToIndex(vert, id.toString());
                 //System.out.println("loaded vertex named " + name + " with id: " + id); //for debugging
             }
             //add edges.
