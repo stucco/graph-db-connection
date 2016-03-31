@@ -33,20 +33,6 @@ public interface DBConnectionAlignment {
     public Map<String, Object> getVertByID(String id);
 
     /**
-     * Retrieve the vertex's property map using a canonical name for the vertex
-     * @param name - a canonical name for the vertex node
-     * @return a property map of the vertex, user must know based on the key how to recast the object type to use its value
-     */
-    public Map<String, Object> getVertByName(String name);
-
-    /**
-     * Retrieves the vertex ID using the vertex canonical name
-     * @param name - canonical name of the vertex
-     * @return ID
-     */
-    public String getVertIDByName(String name);
-
-    /**
      * Given a property map add a new vertex to the DB
      * @param properties - the property map of the vertex
      * @return ID of the vertex as defined in the DB
