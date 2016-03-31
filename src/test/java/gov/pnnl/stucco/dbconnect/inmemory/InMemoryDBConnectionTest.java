@@ -2,6 +2,8 @@ package gov.pnnl.stucco.dbconnect.inmemory;
 
 
 import gov.pnnl.stucco.dbconnect.Condition;
+import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
+import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryConstraint;
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnection;
@@ -28,6 +30,8 @@ import org.json.JSONObject;
 public class InMemoryDBConnectionTest 
 extends TestCase
 {
+    private static DBConnectionFactory factory = DBConnectionFactory.getFactory(DBConnectionFactory.Type.INMEMORY);
+    private static DBConnectionTestInterface conn;
 
     /**
      * Create the test case
@@ -39,22 +43,24 @@ extends TestCase
         super( testName );
     }
 
+    public void setUp(){
+        //TODO: add this to other tests below
+        conn = factory.getDBConnectionTestInterface();
+        conn.open();
+        //System.out.println(" Global setUp started");
+        //System.out.println(" Global setUp done");
+    }
+
+    public void tearDown(){
+        //System.out.println(" Global tearDown ");
+        conn.removeAllVertices();
+        conn.close();
+    }
+
     /**
-     * @return the suite of tests being tested
      */
     public static Test suite()
     {
-        //return new TestSuite( DBConnectionTest.class );
-        return new TestSetup(new TestSuite(InMemoryDBConnectionTest.class)) {
-
-            protected void setUp(){
-                //System.out.println(" Global setUp started");
-                //System.out.println(" Global setUp done");
-            }
-            protected void tearDown(){
-                //System.out.println(" Global tearDown ");
-            }
-        };
     }
 
     /**
@@ -62,7 +68,7 @@ extends TestCase
      */
     public void testLoad()
     {
-        InMemoryDBConnection conn = new InMemoryDBConnection();
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
 
         String vert1 = "{" +
                 "\"name\":\"CVE-1999-0002\"," +
@@ -138,7 +144,7 @@ extends TestCase
      */
     public void testUpdate()
     {
-        InMemoryDBConnection conn = new InMemoryDBConnection();
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
 
         String vert1 = "{"+
                 "\"endIPInt\":55," +
@@ -219,7 +225,7 @@ extends TestCase
      */
     public void testHighForwardDegreeVerts()
     {
-        InMemoryDBConnection conn = new InMemoryDBConnection();
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
 
         String vert1 = "{" +
                 "\"name\":\"/usr/local/something\"," +
@@ -281,7 +287,7 @@ extends TestCase
      */
     public void testHighReverseDegreeVerts()
     {
-        InMemoryDBConnection conn = new InMemoryDBConnection();
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
 
         String vert1 = "{" +
                 "\"name\":\"11.11.11.11:1111\"," +
@@ -344,7 +350,7 @@ extends TestCase
      */
     public void testConstraints()
     {
-        InMemoryDBConnection conn = new InMemoryDBConnection();
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
         Map<String, Object> vert;
         List<DBConstraint> constraints;
         String id;
