@@ -58,9 +58,44 @@ extends TestCase
     }
 
     /**
+     * get the vertex's property map using the vertex's canonical name
+     * @param vertName
+     * @return property map
      */
-    public static Test suite()
-    {
+    private List<Map<String,Object>> getVertsByName(String vertName) {
+        List<Map<String,Object>> retVal = new LinkedList<Map<String,Object>>();
+        List<String> ids = getVertIDsByName(vertName);
+        if(ids == null)
+            return null;
+        for(String currID : ids){
+            Map<String, Object> currVert = conn.getVertByID(currID);
+            if(currVert == null)
+                throw new IllegalStateException("bad state: found vert id with no content.");
+            retVal.add(currVert);
+        }
+        return retVal;
+    }
+
+    private Map<String,Object> getVertByName(String vertName){
+        return getVertsByName(vertName).get(0);
+    }
+
+    /**
+     * get the vertexID using the canonical name
+     * @param vertName
+     * @return ID
+     */
+    private List<String> getVertIDsByName(String vertName){
+        if(vertName == null || vertName == "")
+            return null;
+        List<DBConstraint> constraints = new ArrayList<DBConstraint>(1);
+        DBConstraint c1 = conn.getConstraint("name", Condition.eq, vertName );
+        constraints.add( c1 );
+        return conn.getVertIDsByConstraints(constraints);
+    }
+
+    private String getVertIDByName(String vertName){
+        return getVertIDsByName(vertName).get(0);
     }
 
     /**
@@ -97,7 +132,7 @@ extends TestCase
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
 
         //find this node, check some properties.
-        String id = conn.getVertIDByName("CVE-1999-0002");
+        String id = getVertIDByName("CVE-1999-0002");
         Map<String, Object> vertProps = conn.getVertByID(id);
         String[] expectedStrs = {"CERT:CA-98.12.mountd","XF:linux-mountd-bo","http://www.ciac.org/ciac/bulletins/j-006.shtml","http://www.securityfocus.com/bid/121"};
         Set expectedRefs = new HashSet(Arrays.asList(expectedStrs));
@@ -105,8 +140,8 @@ extends TestCase
         assertTrue(actualRefs.equals(expectedRefs));
 
         //find the other node, check its properties.
-        String id2 = conn.getVertIDByName("CVE-1999-nnnn");
-        vertProps = (Map<String,Object>)conn.getVertByName("CVE-1999-nnnn");
+        String id2 = getVertIDByName("CVE-1999-nnnn");
+        vertProps = (Map<String,Object>)getVertByName("CVE-1999-nnnn");
         assertEquals("test description asdf.", vertProps.get("description"));
         expectedRefs = new HashSet();
         expectedRefs.add("http://www.google.com");
@@ -155,7 +190,7 @@ extends TestCase
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
 
         //get some properties
-        String id = conn.getVertIDByName("testvert_55");
+        String id = getVertIDByName("testvert_55");
         Map<String, Object> vertProps = conn.getVertByID(id);
         assertEquals( "55", vertProps.get("endIPInt").toString());
         assertEquals( "[aaaa]", vertProps.get("source").toString());
@@ -243,8 +278,8 @@ extends TestCase
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
 
         //find node ids
-        String id = conn.getVertIDByName("/usr/local/something");
-        String id2 = conn.getVertIDByName("11.11.11.11:1111_to_22.22.22.22:1");
+        String id = getVertIDByName("/usr/local/something");
+        String id2 = getVertIDByName("11.11.11.11:1111_to_22.22.22.22:1");
 
         //There should be no edge between them
         assertEquals(0, conn.getEdgeCountByRelation(id, id2, "hasFlow"));
@@ -274,8 +309,8 @@ extends TestCase
         }
 
         //find node ids
-        id = conn.getVertIDByName("/usr/local/something");
-        id2 = conn.getVertIDByName("11.11.11.11:1111_to_22.22.22.22:1");
+        id = getVertIDByName("/usr/local/something");
+        id2 = getVertIDByName("11.11.11.11:1111_to_22.22.22.22:1");
 
         //Confirm the edge between them
         assertEquals(1, conn.getEdgeCountByRelation(id2, id, "hasFlow"));
@@ -305,8 +340,8 @@ extends TestCase
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
 
         //find node ids
-        String id = conn.getVertIDByName("11.11.11.11:1111");
-        String id2 = conn.getVertIDByName("11.11.11.11");
+        String id = getVertIDByName("11.11.11.11:1111");
+        String id2 = getVertIDByName("11.11.11.11");
 
         //There should be no edge between them
         assertEquals(0, conn.getEdgeCountByRelation(id, id2, "hasIP"));
@@ -316,8 +351,8 @@ extends TestCase
         conn.addEdge(id2, id, "hasIP");
 
         //find node ids
-        id = conn.getVertIDByName("11.11.11.11:1111");
-        id2 = conn.getVertIDByName("11.11.11.11");
+        id = getVertIDByName("11.11.11.11:1111");
+        id2 = getVertIDByName("11.11.11.11");
 
         //Confirm the edge between them
         assertEquals(1, conn.getEdgeCountByRelation(id2, id, "hasIP"));
@@ -337,8 +372,8 @@ extends TestCase
         }
 
         //find node ids
-        id = conn.getVertIDByName("11.11.11.11:1111");
-        id2 = conn.getVertIDByName("11.11.11.11");
+        id = getVertIDByName("11.11.11.11:1111");
+        id2 = getVertIDByName("11.11.11.11");
 
         //Confirm the edge between them
         assertEquals(1, conn.getEdgeCountByRelation(id2, id, "hasIP"));
@@ -377,15 +412,15 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         assertEquals(1, ids.size());
-        assertTrue(ids.contains(conn.getVertIDByName("aaa_5")));
+        assertTrue(ids.contains(getVertIDByName("aaa_5")));
 
         c1 = new InMemoryConstraint("aaa", Condition.neq, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
+        expectedIds.add(getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_7"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -394,8 +429,8 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
+        expectedIds.add(getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_7"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -404,9 +439,9 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_5"));
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
+        expectedIds.add(getVertIDByName("aaa_5"));
+        expectedIds.add(getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_7"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(3, ids.size());
 
@@ -414,7 +449,7 @@ extends TestCase
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
-        assertTrue(ids.contains(conn.getVertIDByName("aaa_5")));
+        assertTrue(ids.contains(getVertIDByName("aaa_5")));
         assertEquals(1, ids.size());
 
         c1 = new InMemoryConstraint("aaa", Condition.lte, new Integer(6) );
@@ -422,8 +457,8 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_5"));
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_5"));
+        expectedIds.add(getVertIDByName("aaa_6"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -480,8 +515,8 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_4_5_6"));
-        expectedIds.add(conn.getVertIDByName("bbb_Integer_4_5_6"));
+        expectedIds.add(getVertIDByName("bbb_4_5_6"));
+        expectedIds.add(getVertIDByName("bbb_Integer_4_5_6"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -490,8 +525,8 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_4_5_6"));
-        expectedIds.add(conn.getVertIDByName("bbb_Integer_4_5_6"));
+        expectedIds.add(getVertIDByName("bbb_4_5_6"));
+        expectedIds.add(getVertIDByName("bbb_Integer_4_5_6"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -514,7 +549,7 @@ extends TestCase
         constraints.add(c2);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_5_6_7_8"));
+        expectedIds.add(getVertIDByName("bbb_5_6_7_8"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(1, ids.size());
 
@@ -523,8 +558,8 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_asdf"));
-        expectedIds.add(conn.getVertIDByName("bbb_asdf4.222"));
+        expectedIds.add(getVertIDByName("bbb_asdf"));
+        expectedIds.add(getVertIDByName("bbb_asdf4.222"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -533,8 +568,8 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_asdf"));
-        expectedIds.add(conn.getVertIDByName("bbb_asdf4.222"));
+        expectedIds.add(getVertIDByName("bbb_asdf"));
+        expectedIds.add(getVertIDByName("bbb_asdf4.222"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
@@ -549,7 +584,7 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_101_102_103"));
+        expectedIds.add(getVertIDByName("bbb_101_102_103"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(1, ids.size());
     }
