@@ -3,12 +3,8 @@ package gov.pnnl.stucco.dbconnect.inmemory;
 
 import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionBase;
-import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
-import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
-import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,11 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
-
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
 /**
  * This class represents a concrete implementation of an in-memory DB Connection Type
@@ -64,6 +56,48 @@ public class InMemoryDBConnection extends DBConnectionBase{
         //TODO: initialize any indexes.
     }
 
+    @Override
+    public long getVertCount(){
+        return vertices.size();
+    }
+
+    @Override
+    public long getEdgeCount(){
+        return edges.size();
+    }
+    
+    
+    @Override
+    public List<Map<String, Object>> getOutEdges(String outVertID) {
+        if(outVertID == null || outVertID.equals("") || !vertices.containsKey(outVertID)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        List<Map<String, Object>> foundEdges = new LinkedList<Map<String, Object>>();
+        for(Map<String, Object> currEdge : edges.values()){
+            if( ((String)currEdge.get("outVertID")).equals(outVertID) ){
+                //inVertID = currEdge.get("inVertID");
+                //outVertID = currEdge.get("outVertID");
+                //relation = currEdge.get("relation");
+                foundEdges.add(currEdge);
+            }
+        }
+        return foundEdges;
+    }
+
+    @Override
+    public List<Map<String, Object>> getInEdges(String inVertID) {
+        if(inVertID == null || inVertID.equals("") || !vertices.containsKey(inVertID)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+        }
+        List<Map<String, Object>> foundEdges = new LinkedList<Map<String, Object>>();
+        for(Map<String, Object> currEdge : edges.values()){
+            if( ((String)currEdge.get("inVertID")).equals(inVertID) ){
+                foundEdges.add( currEdge );
+            }
+        }
+        return foundEdges;
+    }
+    
     /**
      * return the vertex's property map given the vertex ID
      * @param vertID

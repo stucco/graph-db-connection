@@ -1,22 +1,22 @@
 package gov.pnnl.stucco.dbconnect.orientdb;
 
+import gov.pnnl.stucco.dbconnect.Condition;
+import gov.pnnl.stucco.dbconnect.DBConnectionBase;
+import gov.pnnl.stucco.dbconnect.DBConstraint;
+import gov.pnnl.stucco.dbconnect.StuccoDBException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,16 +24,9 @@ import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
+import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
-
-import gov.pnnl.stucco.dbconnect.Condition;
-import gov.pnnl.stucco.dbconnect.DBConnectionBase;
-import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
-import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
-import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
-import gov.pnnl.stucco.dbconnect.DBConstraint;
-import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
 public class OrientDBConnection extends DBConnectionBase {
    
@@ -83,11 +76,11 @@ public class OrientDBConnection extends DBConnectionBase {
     /** 
      * Runs SQL query to get vertices.
      * 
-     * @throws OCommandExecutionException on bad query
+     * @throws StuccoDBException on bad query
      * 
      * @return Zero or more vertices
      * */
-    private List<OrientVertex> getVerticesFromQuery(String query) throws OCommandExecutionException {
+    private List<OrientVertex> getVerticesFromQuery(String query) {
         OrientDynaElementIterable qiterable = executeSQL(query);
         List<OrientVertex> vertexList = new ArrayList<OrientVertex>(1);
         if (qiterable != null) { // Don't know if this can happen, but just in case
@@ -98,18 +91,42 @@ public class OrientDBConnection extends DBConnectionBase {
         }
         return vertexList;
     }
+    
+    /** 
+     * Runs SQL query to get edges.
+     * 
+     * @throws StuccoDBException on bad query
+     * 
+     * @return Zero or more edges
+     * */
+    private List<OrientEdge> getEdgesFromQuery(String query) {
+        OrientDynaElementIterable qiterable = executeSQL(query);
+        List<OrientEdge> edgeList = new ArrayList<OrientEdge>(1);
+        if (qiterable != null) { // Don't know if this can happen, but just in case
+            Iterator<Object> iter = qiterable.iterator();
+            while (iter.hasNext()) {
+                edgeList.add((OrientEdge) iter.next());
+            }
+        }
+        return edgeList;
+    }
 
     /**
      *  Runs SQL query to do things like create properties, indexes, etc...
      * @param query
      * @return
      */
-    public <T> T executeSQL(String query) {
-        OCommandSQL sql = new OCommandSQL(query);
-        OCommandRequest ocr = graphDB.command(sql);
-        T obj = ocr.<T>execute();
+    <T> T executeSQL(String query) {
+        try {
+            OCommandSQL sql = new OCommandSQL(query);
+            OCommandRequest ocr = graphDB.command(sql);
+            T obj = ocr.<T>execute();
+            return obj;
+        } catch (OCommandExecutionException e)
+        {
+            throw new StuccoDBException(e);
+        }
         
-        return obj;
     }
     
     /** 
@@ -486,10 +503,14 @@ public class OrientDBConnection extends DBConnectionBase {
     }
 
     @Override
-    public void buildIndex(String indexConfig) throws IOException {
+    public void buildIndex(String indexConfig) {
         IndexDefinitionsToOrientDB loader = new IndexDefinitionsToOrientDB();
         loader.setDBConnection(this);
-        loader.parse(new File(indexConfig));
+        try {
+            loader.parse(new File(indexConfig));
+        } catch (IOException e) {
+            throw new StuccoDBException(e);
+        }
         
     }
     
@@ -500,5 +521,76 @@ public class OrientDBConnection extends DBConnectionBase {
         return graphDB;
     }
 
+    @Override
+    public long getVertCount() {
+        long count = this.graphDB.countVertices();
+        return count;
+    }
+
+    @Override
+    public long getEdgeCount() {
+        long count = this.graphDB.countEdges();
+        return count;
+    }
+
+    @Override
+    public List<Map<String, Object>> getOutEdges(String outVertID) {
+        if(outVertID == null || outVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        
+        Object query_ret = getVertByID(outVertID);
+        if(query_ret == null){
+            logger.warn("getOutVertIDs could not find inVertID:" + outVertID);
+            throw new IllegalArgumentException("missing or invalid outVertID");
+        }
+        
+        String query = String.format("SELECT expand(outE()) FROM %s", outVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        for(OrientEdge item : results){
+            Map<String,Object> edgeProperties = new HashMap<String, Object>();
+            String relation = item.getLabel();
+            String inVertID = item.getInVertex().getIdentity().toString();
+            
+            edgeProperties.put("inVertID", inVertID);
+            edgeProperties.put("outVertID", outVertID);
+            edgeProperties.put("relation", relation);
+            edgePropertyList.add(edgeProperties);
+        }
+        
+        return edgePropertyList;
+    }
+
+    @Override
+    public List<Map<String, Object>> getInEdges(String inVertID) {
+            if(inVertID == null || inVertID.equals("") ){
+                throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+            }
+            
+            Object query_ret = getVertByID(inVertID);
+            if(query_ret == null){
+                logger.warn("getInVertIDs could not find inVertID:" + inVertID);
+                throw new IllegalArgumentException("missing or invalid inVertID");
+            }
+            
+            String query = String.format("SELECT expand(inE()) FROM %s", inVertID); 
+            List<OrientEdge>results = getEdgesFromQuery(query);
+
+            List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+            for(OrientEdge item : results){
+                Map<String,Object> edgeProperties = new HashMap<String, Object>();
+                String relation = item.getLabel();
+                String outVertID = item.getOutVertex().getIdentity().toString();
+                
+                edgeProperties.put("inVertID", inVertID);
+                edgeProperties.put("outVertID", outVertID);
+                edgeProperties.put("relation", relation);
+                edgePropertyList.add(edgeProperties);
+            }
+            
+            return edgePropertyList;
+        }
 
 }

@@ -1,39 +1,25 @@
 package gov.pnnl.stucco.dbconnect.titan;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
-import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
+import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-//import junit.framework.TestCase;
-
-
-
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-
-import com.tinkerpop.rexster.client.RexProException;
+import org.json.JSONObject;
 
 
 /**
@@ -66,7 +52,7 @@ import com.tinkerpop.rexster.client.RexProException;
 public class DBConnectionIndexerTest 
 //extends TestCase
 {
-    private static DBConnectionFactory factory;// = DBConnectionFactory.getFactory(DBConnectionFactory.Type.INMEMORY);
+    private static DBConnectionFactory factory;
     private static DBConnectionTestInterface conn;
     private static IndexDefinitionsToTitanGremlin loader;
     private static String indexConfig;
@@ -175,6 +161,43 @@ public class DBConnectionIndexerTest
 ////        }
 //    }
 
+//    /**
+//     * Tests whether adding the index speed up a query
+//     */
+//    @Test
+//    public void testSpeedup()
+//    {
+//
+//
+//        
+//        // make sure we have no indexes
+//        try {
+//            conn.removeAllVertices();
+//            conn.buildIndex(indexConfig);
+//
+//        } catch (StuccoDBException e) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
+//        
+//        String currentVert = "{" +
+//                "\"name\":\"11.11.11.11:1111_to_22.22.22.22:" + 0 + "\"," +
+//                "\"vertexType\":\"flow_0\"" + 
+//                "}";
+//        String id = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
+//        
+//        Set<String> vals = new HashSet<String>(Arrays.asList(new String[] {"thing1", "thing2"}));
+//        
+////        Map<String, Object> propertyMap = new HashMap<String,Object>();
+////        propertyMap.put("source", vals);
+//        
+//        ((TitanDBConnection)conn).setPropertyInDB(id, "source", vals);
+//        
+//        Map<String, Object> propertyMap = conn.getVertByID(id);
+//        
+//        System.out.println();
+//    }
+    
     /**
      * Tests whether adding the index speed up a query
      */
@@ -183,36 +206,50 @@ public class DBConnectionIndexerTest
     {
 
 
-        long deltaWithoutIndex = timingVertexGet();
         
         // make sure we have no indexes
         try {
-            conn.removeAllVertices();
-            loader.parse(new File(indexConfig));
-        } catch (IOException e) {
+//            conn.removeAllVertices();
+            conn.buildIndex(indexConfig);
+
+        } catch (StuccoDBException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        long deltaWithIndex = timingVertexGet("vertexType");
         
-        long deltaWithIndex = timingVertexGet();
+        try {
+            conn.removeAllVertices();
+        } catch (StuccoDBException e) {
+            e.printStackTrace();
+        }
+
+        long deltaWithoutIndex = timingVertexGet("vertexType1");
+
         
         double ratio = (double)deltaWithoutIndex / (double)deltaWithIndex;
         
         // we assume that indexing will really help
-        assertTrue(ratio > 5);
+        System.out.println(ratio);
+        assertTrue(ratio > 1);
     }
     
     /**
      * add 1000 vertices and time how long it takes to retrieve 100 of them
      * @return time in milliseconds
      */
-    private long timingVertexGet() {
+    private long timingVertexGet(String propertyName) {
         
         // add 1000 vertices
-        addVertices();
+        if(propertyName.equals("vertexType1"))
+        {
+            addVerticesAlt();
+        } else {
+            addVertices();
+        }
         
         // query time for get back
-        DBConstraint c1 = conn.getConstraint("vertexType", Condition.eq, new String("flow_5") );
+        DBConstraint c1 = conn.getConstraint(propertyName, Condition.eq, new String("flow_5") );
         List<DBConstraint> constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         
@@ -224,27 +261,41 @@ public class DBConnectionIndexerTest
         long lastTS = System.currentTimeMillis();
         long delta = lastTS-startTS;
         
-        assertEquals(100, ids.size());
+        assertEquals(1000, ids.size());
        
         return delta;
     }
     
     /**
-     * add 1000 vertices
+     * add 30000 vertices
      */
     private void addVertices() {
 
-        for(int i=0; i<1000; i++){
+        for(int i=0; i<10000; i++){
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:1111_to_22.22.22.22:" + i + "\"," +
-                    "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"flow_"+ i%10 + "\"" + 
                     "}";
             conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
         }
     }
 
+    
+    /**
+     * add 30000 vertices
+     */
+    private void addVerticesAlt() {
+
+        for(int i=0; i<10000; i++){
+            String currentVert = "{" +
+                    "\"name\":\"11.11.11.11:1111_to_22.22.22.22:" + i + "\"," +
+                    "\"source1\":[\"test\"],"+
+                    "\"vertexType1\":\"flow_"+ i%10 + "\"" + 
+                    "}";
+            conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
+        }
+    }
 
 }
 

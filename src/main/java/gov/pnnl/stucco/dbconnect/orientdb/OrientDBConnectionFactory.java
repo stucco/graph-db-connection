@@ -4,7 +4,6 @@ import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
-import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnection;
 
 /**
  * This is a concrete Factory for the OrientDB instance of a DB

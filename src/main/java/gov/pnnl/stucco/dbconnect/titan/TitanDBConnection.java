@@ -21,7 +21,6 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.tinkerpop.rexster.client.RexProException;
 import com.tinkerpop.rexster.client.RexsterClient;
 import com.tinkerpop.rexster.client.RexsterClientFactory;
@@ -34,6 +33,8 @@ public class TitanDBConnection extends DBConnectionBase {
     private Map<String, String> vertIDCache; //TODO could really split this into a simple cache class.
     private Set<String> vertIDCacheRecentlyRead;
     private String dbType = null;
+//    private static int WRITE_CONFIRM_TRY_LIMIT = 6;
+//    private static int COMMIT_TRY_LIMIT = 4;
     private static int VERT_ID_CACHE_LIMIT = 10000;
     private static String[] HIGH_FORWARD_DEGREE_EDGE_LABELS = {"hasFlow"}; //TODO: update as needed.  Knowing these allows some queries to be optimized.
 
@@ -51,15 +52,7 @@ public class TitanDBConnection extends DBConnectionBase {
         String[] keys = properties.keySet().toArray(new String[0]);
         for(int i=0; i<keys.length; i++){
             updateVertexProperty(id, keys[i], properties.get(keys[i]));
-//            graphDB.commit();
-            try {
-                commit();
-            } catch (RexProException | IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                logger.error("");
-                throw new StuccoDBException("could not create update vertex due to DB error");
-            } //added
+            commit();
         }
     }
 
@@ -67,31 +60,51 @@ public class TitanDBConnection extends DBConnectionBase {
     protected void setPropertyInDB(String id, String key, Object newValue) {
         HashMap<String, Object> param = new HashMap<String, Object>();
 
-        String cardinality = findCardinality(id, key, newValue);
         param.put("ID", Long.parseLong(id));
         param.put("KEY", key);
-        param.put("VALUE", newValue);
-        
-        
-        //TODO: verify how the new value is doing this.  Overriding or adding
-        String query = "g.v(ID).setProperty(KEY, VALUE)";
+        String cardinality = getCardinality(newValue);
         if (cardinality.equals("SET")) {
-            query = "g.v(ID).addProperty(KEY, VALUE)";
+            // first check to see if a property exist with this name
+            StringBuilder queryPropertyKey = new StringBuilder();
+            queryPropertyKey.append(String.format("m = g.getManagementSystem();m.getPropertyKey('%s')", key));
+            List propertyKeyResultsList = (List)executeGremlin(queryPropertyKey.toString());
+
+            // if the property doesn't exist, add the property to titan
+            if(propertyKeyResultsList.get(0) == null) {
+                Object obj = ((Set)newValue).iterator().next();
+                String classType = obj.getClass().getSimpleName();
+                StringBuilder declaration = new StringBuilder();
+                declaration.append(String.format("m=g.getManagementSystem();m.makePropertyKey('%s')", key));
+                declaration.append(String.format(".dataType(%s.class)", classType));
+                declaration.append(".cardinality(Cardinality.SET).make();m.commit()");
+                executeGremlin(declaration.toString());
+            }
+                
+            // Titan throws an exception if the set already contains the same data being added to it
+            // we are removing the content from this vertex's property to avoid this exception
+            // the data for this key assumes that both the new and old data have been merge prior to this call
+            String query = "g.v(ID).removeProperty(KEY)";
+            executeGremlin(query, param);
+            
+            // add the property data
+            Set multiValues = (Set) newValue;
+            for (Object value : multiValues) {
+                param.put("VALUE", value);
+                query = "g.v(ID).addProperty(KEY, VALUE)";
+                executeGremlin(query, param);
+            }
         }
-        
-        try {
-            Object rtn = executeGremlin(query, param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        else {
+            param.put("VALUE", newValue);
+            
+            String query = "g.v(ID).setProperty(KEY, VALUE)";
+            executeGremlin(query, param);
         }
     }
     
     /** 
      * {@inheritDoc}
      * <p>Gets the properties of a vertex selected by RID. 
-     * 
-     * TODO: deal with exceptions
      * 
      * @return1 Map of properties (or null if vertex not found)
      */
@@ -103,12 +116,7 @@ public class TitanDBConnection extends DBConnectionBase {
         Map<String, Object> param = new HashMap<String, Object>();
         param.put("ID", Integer.parseInt(id));
         Object query_ret = null;
-        try {
-            query_ret = executeGremlin("g.v(ID).map();", param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        query_ret = executeGremlin("g.v(ID).map();", param);
         if (query_ret == null) {
             return null;
         }
@@ -122,7 +130,6 @@ public class TitanDBConnection extends DBConnectionBase {
     private Map<String,Object> convertListPropertiesToSets(Map<String,Object> properties)
     {
         for(Map.Entry<String, Object> entry : properties.entrySet()) {
-            String key = entry.getKey();
             Object value = entry.getValue();
             if (value instanceof List)
             {
@@ -141,12 +148,7 @@ public class TitanDBConnection extends DBConnectionBase {
         Map<String, Object> param = new HashMap<String, Object>();
         param.put("NAME", name);
         Object query_ret = null;
-        try {
-            query_ret = executeGremlin("g.query().has(\"name\",NAME).vertices().toList();", param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        query_ret = executeGremlin("g.query().has(\"name\",NAME).vertices().toList();", param);
         List<Map<String,Object>> query_ret_list = (List<Map<String,Object>>)query_ret;
         if(query_ret_list.size() == 0){
             //logger.info("findVert found 0 matching verts for name:" + name); //this is too noisy, the invoking function can complain if it wants to...
@@ -209,15 +211,7 @@ public class TitanDBConnection extends DBConnectionBase {
 
     @Override
     public String addVertex(Map<String, Object> properties) {
-        String graphType = null;
-        try {
-            graphType = getDBType();
-        } catch (IOException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
         String name = (String)properties.get("name");
-        Long newID = null;
         if(name == null || name.isEmpty()){
             String msg = String.format("cannot add vertex with missing or invalid vertID");
             throw new IllegalArgumentException(msg);
@@ -225,19 +219,21 @@ public class TitanDBConnection extends DBConnectionBase {
         
         //convert any multi-valued properties to a set form.
         convertAllMultiValuesToSet(properties);
+        Map<String, Object> multiProperties = separateByCardinality(properties);
         
         Map<String, Object> param = new HashMap<String, Object>();
         param.put("VERT_PROPS", properties);
         
-        if(graphType == "TitanGraph") {
-            try {
-                newID = (Long)((List<Object>) executeGremlin("v = g.addVertex(null, VERT_PROPS);v.getId();", param)).get(0);
-            } catch (RexProException | IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
+        Long newID = (Long)((List<Object>) executeGremlin("v = g.addVertex(null, VERT_PROPS);v.getId();", param)).get(0);
+
         vertIDCachePut(name, newID.toString());
+        
+        // Handle all the SETs one item at a time
+        for (Map.Entry<String, Object> entry : multiProperties.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            setPropertyInDB(newID.toString(), key, value);
+        }
         
         //TODO: confirm before proceeding
 //        ret = false;
@@ -254,12 +250,7 @@ public class TitanDBConnection extends DBConnectionBase {
 //            tryCount += 1;
 //        }
 
-        try {
-            commit();
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        commit();
         return newID.toString();
     }
 
@@ -282,21 +273,13 @@ public class TitanDBConnection extends DBConnectionBase {
         //query += ".vertices().toList();";
         query += ";";
         Object query_ret = null;
-        try {
-            query_ret = executeGremlin(query, param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        query_ret = executeGremlin(query, param);
         List<Map<String,Object>> query_ret_list = (List<Map<String,Object>>)query_ret;
         
         List<String> vertIDs = new ArrayList<String>();
         if(query_ret_list != null) {
             for(Map<String,Object> vertProp : query_ret_list) {
                 String id = (String)vertProp.get("_id");
-                Map<String, Object> props = (Map<String, Object>)vertProp.get("_properties");
-                String name = (String) props.get("name");
-                //TODO: do we need name or _id?
                 vertIDs.add(id);
             }
         }
@@ -326,18 +309,11 @@ public class TitanDBConnection extends DBConnectionBase {
         
        
         Map<String, Object> props = new HashMap<String, Object>();
-        //TODO: shouldn't the ID's be LONGs?
-        props.put("ID_IN", Integer.parseInt(inVertID));
-        props.put("ID_OUT", Integer.parseInt(outVertID));
+        props.put("ID_IN", Long.parseLong(inVertID));
+        props.put("ID_OUT", Long.parseLong(outVertID));
         props.put("LABEL", relation);
         
-        //and now finally add edge to graph.  If it fails, return false here. if it was ok, then we can continue below.
-        try {
-            Object ret = executeGremlin("g.addEdge(g.v(ID_OUT),g.v(ID_IN),LABEL)", props);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        executeGremlin("g.addEdge(g.v(ID_OUT),g.v(ID_IN),LABEL)", props);
 
         
         //confirm before proceeding
@@ -376,12 +352,7 @@ public class TitanDBConnection extends DBConnectionBase {
         param.put("LABEL", relation);
         Object rtnValue = null;
 
-        try {
-            rtnValue = executeGremlin("g.v(ID).out(LABEL);", param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        rtnValue = executeGremlin("g.v(ID).out(LABEL);", param);
         
         List<String> relatedIDs = extractIDList((List<Map<String,Object>>)rtnValue);
         
@@ -420,12 +391,7 @@ public class TitanDBConnection extends DBConnectionBase {
         param.put("LABEL", relation);
         Object rtnValue = null;
 
-        try {
-            rtnValue = executeGremlin("g.v(ID).in(LABEL);", param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        rtnValue = executeGremlin("g.v(ID).in(LABEL);", param);
         
         List<String> relatedIDs = extractIDList((List<Map<String,Object>>)rtnValue);
         return relatedIDs;
@@ -451,12 +417,7 @@ public class TitanDBConnection extends DBConnectionBase {
         param.put("LABEL", relation);
         Object rtnValue = null;
 
-        try {
-            rtnValue = executeGremlin("g.v(ID).both(LABEL);", param);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        rtnValue = executeGremlin("g.v(ID).both(LABEL);", param);
         
         List<String> relatedIDs = extractIDList((List<Map<String,Object>>)rtnValue);
         return relatedIDs;
@@ -486,12 +447,7 @@ public class TitanDBConnection extends DBConnectionBase {
         params.put("ID", id);
         
         String query = String.format("g.removeVertex(ID)", params);
-        try {
-            executeGremlin(query);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        executeGremlin(query);
     }
 
     @Override
@@ -502,12 +458,7 @@ public class TitanDBConnection extends DBConnectionBase {
         params.put("V2", v2);
         params.put("LABEL", relation);
         String query = String.format("g.removeEdge(V1,V2,LABEL)", params);
-        try {
-            executeGremlin(query);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        executeGremlin(query);
     }
 
     @Override
@@ -540,12 +491,7 @@ public class TitanDBConnection extends DBConnectionBase {
         }
 
         if(!highDegree){
-            try {
-                query_ret = executeGremlin("g.v(ID_OUT).outE(LABEL).inV().id;", param);
-            } catch (RexProException | IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            query_ret = executeGremlin("g.v(ID_OUT).outE(LABEL).inV().id;", param);
             List<Long> query_ret_list = (List<Long>)query_ret;
             //System.out.println("query ret list contains " + query_ret_list.size() + " items.");
             for(Long item : query_ret_list){
@@ -554,12 +500,7 @@ public class TitanDBConnection extends DBConnectionBase {
             }
             return edgeCount;
         }else{
-            try {
-                query_ret = executeGremlin("g.v(ID_IN).inE(LABEL).outV().id;", param);
-            } catch (RexProException | IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            query_ret = executeGremlin("g.v(ID_IN).inE(LABEL).outV().id;", param);
             List<Long> query_ret_list = (List<Long>)query_ret;
             //System.out.println("query ret list contains " + query_ret_list.size() + " items.");
             for(Long item : query_ret_list){
@@ -576,8 +517,7 @@ public class TitanDBConnection extends DBConnectionBase {
             try {
                 graphDB.close();
             } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                throw new StuccoDBException(e);
             }
             graphDB = null;
         }
@@ -586,7 +526,7 @@ public class TitanDBConnection extends DBConnectionBase {
     /**
      * need to commit this transaction
      */
-    private void commit() throws RexProException, IOException{
+    private void commit() {
         String graphType = getDBType();
         if(graphType != "TinkerGraph")
             executeGremlin("g.commit()");
@@ -627,21 +567,17 @@ public class TitanDBConnection extends DBConnectionBase {
         }
     }
     
-    private String getDBType() throws IOException{
+    private String getDBType() {
         if(this.dbType == null){
-            String type = null;
-            try{
-                type = graphDB.execute("g.getClass()").get(0).toString();
-            }catch(Exception e){
-                logger.error("Could not find graph type!",e);
-                throw new IOException("Could not find graph type!");
-            }
+            Object rtnValue = executeGremlin("g.getClass()");
+            String type = ((List<Object>)rtnValue).get(0).toString();
+
             if( type.equals("class com.tinkerpop.blueprints.impls.tg.TinkerGraph") ){
                 this.dbType = "TinkerGraph";
             }else if( type.equals("class com.thinkaurelius.titan.graphdb.database.StandardTitanGraph") ){
                 this.dbType = "TitanGraph";
             }else{
-                throw new IOException("Could not find graph type - unknown type!");
+                throw new IllegalStateException("Could not find graph type - unknown type!");
             }
         }
         return this.dbType;
@@ -654,10 +590,6 @@ public class TitanDBConnection extends DBConnectionBase {
         return sw.toString();
     }
     
-    public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
-    }
 
     @Override
     public void removeAllVertices() {
@@ -667,12 +599,7 @@ public class TitanDBConnection extends DBConnectionBase {
 
         //NB: this query is slow enough that connection can time out if the DB starts with many vertices.
         String query = String.format("g.V.remove();g");
-        try {
-            executeGremlin(query);
-        } catch (RexProException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        executeGremlin(query);
         
     }
 
@@ -683,10 +610,14 @@ public class TitanDBConnection extends DBConnectionBase {
     }
 
     @Override
-    public void buildIndex(String indexConfig) throws IOException {
+    public void buildIndex(String indexConfig) {
         IndexDefinitionsToTitanGremlin loader = new IndexDefinitionsToTitanGremlin();
         loader.setDBConnection(this);
-        loader.parse(new File(indexConfig));
+        try {
+            loader.parse(new File(indexConfig));
+        } catch (IOException e) {
+            throw new StuccoDBException(e);
+        }
         
     }
     
@@ -697,11 +628,7 @@ public class TitanDBConnection extends DBConnectionBase {
         return graphDB;
     }
 
-    //TODO make private
-    //wrapper to reduce boilerplate
-    //TODO wrapper throws away any return value, 
-    //  it'd be nice to use this even when we want the query's retval... but then we're back w/ exceptions & don't gain much.
-    public Object executeGremlin(String query, Map<String,Object> params) throws RexProException, IOException{
+    Object executeGremlin(String query, Map<String,Object> params) {
         if(this.graphDB == null)
             throw new IllegalArgumentException(); 
         
@@ -709,21 +636,121 @@ public class TitanDBConnection extends DBConnectionBase {
         // no execute() args can end up returning null, due to known API bug.
         // returning 'g' everywhere is just the simplest workaround for it, since it is always defined.
 //        query += ";g";
-        Object rtnValue = graphDB.execute(query, params);
-        
-        //TODO: there should be a commit() here?
+        //UPDATE: there are some queries where we don't want the added g, because want what was being returned
+
+        Object rtnValue;
+        try {
+            rtnValue = graphDB.execute(query, params);
+        } catch (RexProException | IOException e) {
+            throw new StuccoDBException(e);
+        }
+
         return rtnValue;
     }
     //likewise.
-    public Object executeGremlin(String query) throws RexProException, IOException{
-        if(this.graphDB == null)
-            throw new IllegalArgumentException(); 
-        Object rtnValue = null;
-        rtnValue = graphDB.execute(query,null);
-        //TODO: there should be a commit() here?
-        return rtnValue;
+    public Object executeGremlin(String query) {
+        return executeGremlin(query,null);
     }
     
+    //tries to commit, returns true if success.
+    private boolean tryCommit(){
+        try{
+            commit();
+        }catch(Exception e){
+            return false;
+        }
+        return true;
+    }
+    
+    //tries to commit, up to 'limit' times. returns true if success.
+    private boolean tryCommit(int limit){
+        int count = 0;
+        boolean result = false;
+        while(!result && count < limit){
+            result = tryCommit();
+            count += 1;
+        }
+        return result;
+    }
 
+    @Override
+    public long getVertCount() {
+        String query = "g.V.count()";
+        ArrayList result = (ArrayList) executeGremlin(query);
+        long count = (Long) result.get(0);
+        return count;
+    }
+
+    @Override
+    public long getEdgeCount() {
+        String query = "g.E.count()";
+        ArrayList result = (ArrayList) executeGremlin(query);
+        long count = (Long) result.get(0);
+        return count;
+    }
+
+    @Override
+    public List<Map<String, Object>> getOutEdges(String outVertID) {
+        Object query_ret = null;
+
+        Object vertIDProps = getVertByID(outVertID);
+        if(vertIDProps == null){
+            logger.warn("getEdgeCount could not find out_id:" + outVertID);
+            throw new IllegalArgumentException("invalid outVertID: "+ outVertID);
+        }
+
+        Map<String, Object> param = new HashMap<String, Object>();
+        param.put("ID_OUT", Long.parseLong(outVertID));
+
+        query_ret = executeGremlin("g.v(ID_OUT).outE;", param);
+        List<Map<String, String>> query_ret_list = (List<Map<String, String>>)query_ret;
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        for(Map<String, String> item : query_ret_list){
+            Map<String,Object> edgeProperties = new HashMap<String, Object>();
+            String inVertID = item.get("_inV");
+            String relation = item.get("_label");
+            
+            edgeProperties.put("inVertID", inVertID);
+            edgeProperties.put("outVertID", outVertID);
+            edgeProperties.put("relation", relation);
+            edgePropertyList.add(edgeProperties);
+        }
+        
+
+        return edgePropertyList;
+
+    }
+
+    @Override
+    public List<Map<String, Object>> getInEdges(String inVertID) {
+        Object query_ret = null;
+
+        Object vertIDProps = getVertByID(inVertID);
+        if(vertIDProps == null){
+            logger.warn("getEdgeCount could not find in_id:" + inVertID);
+            throw new IllegalArgumentException("invalid inVertID: "+ inVertID);
+        }
+
+        Map<String, Object> param = new HashMap<String, Object>();
+        param.put("ID_IN", Long.parseLong(inVertID));
+
+        query_ret = executeGremlin("g.v(ID_IN).inE;", param);
+        List<Map<String,String>> query_ret_list = (List<Map<String, String>>)query_ret;
+        
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        for(Map<String, String> item : query_ret_list){
+            Map<String,Object> edgeProperties = new HashMap<String, Object>();
+            String outVertID = item.get("_outV");
+            String relation = item.get("_label");
+            
+            edgeProperties.put("inVertID", inVertID);
+            edgeProperties.put("outVertID", outVertID);
+            edgeProperties.put("relation", relation);
+            edgePropertyList.add(edgeProperties);
+        }
+        
+
+        return edgePropertyList;
+    }
 
 }

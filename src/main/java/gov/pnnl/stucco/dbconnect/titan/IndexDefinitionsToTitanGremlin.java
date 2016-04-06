@@ -2,6 +2,7 @@ package gov.pnnl.stucco.dbconnect.titan;
 
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
+import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -18,8 +19,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.tinkerpop.rexster.client.RexProException;
 
 
 //BELOW FROM ORIGINAL TITAN GREMLIN 
@@ -64,17 +63,9 @@ public class IndexDefinitionsToTitanGremlin {
     private static final String COMPOSITE = "composite";
     private static final String MIXED = "mixed";
 
-    /** Number of seconds to pause after initiating connection. */
-    private static final int WAIT_TIME = 1;
     
     /** Our gateway to the DB. */
     private DBConnectionIndexerInterface dbConnection;
-    
-    /** 
-     * If true, use the test config for the DBConnection; otherwise
-     * use the default config.
-     */
-    private boolean testMode;
 
     /** Counter used to generate unique index names. */
     private int indexNumber = 0;
@@ -87,12 +78,8 @@ public class IndexDefinitionsToTitanGremlin {
         // Instantiable but only from this file    
     }
     
-    private void setTestMode(boolean flag) {
-        testMode = flag;
-    }
-    
     /**
-     * specifies the orientDB dbconnection 
+     * specifies the Titan dbconnection 
      * @param dbConnection
      */
     public void setDBConnection(DBConnectionIndexerInterface dbConnection) {
@@ -192,14 +179,14 @@ public class IndexDefinitionsToTitanGremlin {
         return declarations.toString();
     }
     
-    /** Converts a Throwable to a String. */
-    private String getStackTrace(Throwable t) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        t.printStackTrace(pw);
-        String str = sw.toString(); 
-        return str;    
-    }
+//    /** Converts a Throwable to a String. */
+//    private String getStackTrace(Throwable t) {
+//        StringWriter sw = new StringWriter();
+//        PrintWriter pw = new PrintWriter(sw);
+//        t.printStackTrace(pw);
+//        String str = sw.toString(); 
+//        return str;    
+//    }
     
     /** 
      * Builds the declaration of a new property. 
@@ -352,7 +339,7 @@ public class IndexDefinitionsToTitanGremlin {
                 logger.info("    Rexster request succeeded");
                 return;
             } 
-            catch (RexProException | IOException e) {
+            catch (StuccoDBException e) {
                 logger.error("    Rexster request failed: " + e); 
             }
         }

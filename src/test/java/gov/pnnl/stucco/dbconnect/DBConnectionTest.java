@@ -1,10 +1,6 @@
 package gov.pnnl.stucco.dbconnect;
 
 
-import gov.pnnl.stucco.dbconnect.Condition;
-import gov.pnnl.stucco.dbconnect.DBConstraint;
-
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,10 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import junit.extensions.TestSetup;
-import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
 
 import org.json.JSONObject;
 
@@ -101,10 +94,10 @@ extends TestCase
                 "\"source\":[\"CVE\"],"+
                 "\"description\":\"Buffer overflow in NFS mountd gives root access to remote attackers, mostly in Linux systems.\","+
                 "\"references\":["+
-                "\"CERT:CA-98.12.mountd\","+
-                "\"http://www.ciac.org/ciac/bulletins/j-006.shtml\","+
-                "\"http://www.securityfocus.com/bid/121\","+
-                "\"XF:linux-mountd-bo\"],"+
+                    "\"CERT:CA-98.12.mountd\","+
+                    "\"http://www.ciac.org/ciac/bulletins/j-006.shtml\","+
+                    "\"http://www.securityfocus.com/bid/121\","+
+                    "\"XF:linux-mountd-bo\"],"+
                 "\"status\":\"Entry\","+
                 "\"score\":1.0,"+
                 "\"foo\":1"+
@@ -114,13 +107,13 @@ extends TestCase
                 "\"_type\":\"vertex\","+
                 "\"source\":[\"CVE\"],"+
                 "\"description\":\"test description asdf.\","+
-                "\"references\":["+
-                "\"http://www.google.com\"],"+
+                "\"references\":[\"http://www.google.com\"],"+
                 "\"status\":\"Entry\","+
                 "\"score\":1.0"+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
+        
 
         //find this node, check some properties.
         String id = conn.getVertIDByName("CVE-1999-0002");
@@ -163,6 +156,23 @@ extends TestCase
         assertEquals(1, matchingIDs.size());
         assertEquals(id2, matchingIDs.get(0));
 
+        long vertCount = conn.getVertCount();
+        assertEquals(2, vertCount);
+        
+        long edgeCount = conn.getEdgeCount();
+        assertEquals(1, edgeCount);
+        
+        List<Map<String,Object>> resultsID = conn.getInEdges(id);
+        List<Map<String,Object>> resultsID2 = conn.getInEdges(id2); 
+        
+        assertEquals(1, resultsID.size());
+        assertEquals(0, resultsID2.size());
+        
+        resultsID = conn.getOutEdges(id); 
+        resultsID2 = conn.getOutEdges(id2);
+        
+        assertEquals(0, resultsID.size());
+        assertEquals(1, resultsID2.size());
         //conn.removeAllVertices();
     }
 
@@ -236,13 +246,13 @@ extends TestCase
         String vert1 = "{" +
                 "\"name\":\"/usr/local/something\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"software\""+
                 "}";
         String vert2 = "{" +
                 "\"name\":\"11.11.11.11:1111_to_22.22.22.22:1\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"flow\""+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
@@ -270,7 +280,7 @@ extends TestCase
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:1111_to_22.22.22.22:" + i + "\"," +
                     "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"flow\""+
                     "}";
             String currentId = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
@@ -300,13 +310,13 @@ extends TestCase
         String vert1 = "{" +
                 "\"name\":\"11.11.11.11:1111\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"address\""+
                 "}";
         String vert2 = "{" +
                 "\"name\":\"11.11.11.11\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"IP\""+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
@@ -335,7 +345,7 @@ extends TestCase
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:" + i + "\"," +
                     "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"address\""+
                     "}";
             String currentId = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
@@ -441,47 +451,48 @@ extends TestCase
         assertEquals(2, ids.size());
         //System.out.println("Found " + ids.size() + " matching verts with aaa <= 6");
 
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_4_5_6");
-        vert.put("bbb", (new int[] {4,5,6}) );
-        String vID = conn.addVertex(vert);
-        Map<String, Object> properties = conn.getVertByID(vID);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_Integer_4_5_6");
-        vert.put("bbb", (new Integer[] {new Integer(4), new Integer(5), new Integer(6)}) );
-        vID = conn.addVertex(vert);
-        properties = conn.getVertByID(vID);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_7_8_9");
-        vert.put("bbb", (new int[] {7,8,9}) );
-        conn.addVertex(vert);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_5_6_7_8");
-        vert.put("bbb", (new int[] {5,6,7,8}) );
-        conn.addVertex(vert);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_asdf");
-        vert.put("bbb", "asdf" );
-        conn.addVertex(vert);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_asdf4.222");
-        vert.put("bbb", "asdf4.222" );
-        conn.addVertex(vert);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_55");
-        vert.put("bbb", 55 );
-        conn.addVertex(vert);
-
-        vert = new HashMap<String, Object>();
-        vert.put("name", "bbb_101_102_103");
-        vert.put("bbb", (new double[] {101, 102, 103.0}) );
-        conn.addVertex(vert);
+        // WAITING FOR RESOLUTION ON THE TEST BELOW
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_4_5_6");
+//        vert.put("bbb", (new int[] {4,5,6}) );
+//        String vID = conn.addVertex(vert);
+//        Map<String, Object> properties = conn.getVertByID(vID);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_Integer_4_5_6");
+//        vert.put("bbb", (new Integer[] {new Integer(4), new Integer(5), new Integer(6)}) );
+//        vID = conn.addVertex(vert);
+//        properties = conn.getVertByID(vID);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_7_8_9");
+//        vert.put("bbb", (new int[] {7,8,9}) );
+//        conn.addVertex(vert);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_5_6_7_8");
+//        vert.put("bbb", (new int[] {5,6,7,8}) );
+//        conn.addVertex(vert);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_asdf");
+//        vert.put("bbb", "asdf" );
+//        conn.addVertex(vert);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_asdf4.222");
+//        vert.put("bbb", "asdf4.222" );
+//        conn.addVertex(vert);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_55");
+//        vert.put("bbb", 55 );
+//        conn.addVertex(vert);
+//
+//        vert = new HashMap<String, Object>();
+//        vert.put("name", "bbb_101_102_103");
+//        vert.put("bbb", (new double[] {101, 102, 103.0}) );
+//        conn.addVertex(vert);
 
         //=================================================================
         //COMMENTING OUT UNTIL WE KNOW HOW THIS IS REALLY SUPPOSE TO WORK

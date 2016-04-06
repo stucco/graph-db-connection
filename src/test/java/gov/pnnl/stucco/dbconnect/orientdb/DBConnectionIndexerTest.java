@@ -1,40 +1,28 @@
 package gov.pnnl.stucco.dbconnect.orientdb;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
-import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-//import junit.framework.TestCase;
-
-
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
 
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
-import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+//import junit.framework.TestCase;
+import org.json.JSONObject;
 
 /**
  * Unit test for generically Testing the DBConnection
@@ -47,7 +35,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 public class DBConnectionIndexerTest 
 //extends TestCase
 {
-    private static DBConnectionFactory factory;// = DBConnectionFactory.getFactory(DBConnectionFactory.Type.INMEMORY);
+    private static DBConnectionFactory factory;
     private static DBConnectionTestInterface conn;
     private static IndexDefinitionsToOrientDB loader;
     private static String indexConfig;
@@ -147,7 +135,7 @@ public class DBConnectionIndexerTest
         // SELECT count FROM (SELECT count(*) FROM (SELECT expand(indexes) FROM metadata:indexmanager ))"; // count of indexes
 
         try {
-            Set<String> dbPropNames = loader.getPropertNamesFromDB(); // names retrieved from the DB
+            Set<String> dbPropNames = loader.getPropertyNamesFromDB(); // names retrieved from the DB
             Set<String> propNames   = loader.getPropertyNames(); // these are the names from which we loaded from a file
             assertEquals(dbPropNames.size(), propNames.size());
         } catch (OCommandExecutionException e) {

@@ -30,4 +30,5 @@ public interface DBConnectionTestInterface extends DBConnectionIndexerInterface 
      * remove all vertices in the databases
      */
     public void removeAllVertices();
+    
 }

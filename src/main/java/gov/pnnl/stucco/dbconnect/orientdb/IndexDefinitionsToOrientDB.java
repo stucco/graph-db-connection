@@ -2,8 +2,6 @@ package gov.pnnl.stucco.dbconnect.orientdb;
 
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
-import gov.pnnl.stucco.dbconnect.orientdb.CommandLine.UsageException;
-import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnection;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,10 +13,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.configuration.Configuration;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -27,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.exception.OSchemaException;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
 
@@ -69,12 +64,6 @@ public class IndexDefinitionsToOrientDB {
     /** Our gateway to the DB. */
     private DBConnectionIndexerInterface dbConnection;
     
-    /** 
-     * If true, use the test config for the DBConnection; otherwise
-     * use the default config.
-     */
-    private boolean testMode;
-
     /** Counter used to generate unique index names. */
     private int indexNumber = 0;
     
@@ -84,10 +73,6 @@ public class IndexDefinitionsToOrientDB {
     
     public IndexDefinitionsToOrientDB() {
         // Instantiable but only from this file    
-    }
-    
-    private void setTestMode(boolean flag) {
-        testMode = flag;
     }
     
     /**
@@ -332,7 +317,7 @@ public class IndexDefinitionsToOrientDB {
      * identify the names of the properties that were made specific to the indexes
      * @return
      */
-    public Set<String> getPropertNamesFromDB() {
+    public Set<String> getPropertyNamesFromDB() {
         Set<String> dbPropertyNames = new HashSet<String>();
 
         String query = "SELECT field FROM (SELECT expand(indexDefinition) FROM (SELECT expand(indexes) FROM metadata:indexmanager))";

@@ -5,14 +5,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 
 public abstract class DBConnectionBase implements DBConnectionAlignment, DBConnectionTestInterface, DBConnectionIndexerInterface {
 
@@ -25,40 +25,40 @@ public abstract class DBConnectionBase implements DBConnectionAlignment, DBConne
     /**
      * returns cardinality of property "key" from vertex id.  If not found, returns null.
      */
-    protected String findCardinality(String id, String key, Object val) {
-        String cardinality;
-
-        cardinality = cardinalityCache.get(key);
-        if(cardinality == null){
-            if(isMultipleCardinality(val)){
-                cardinality = "SET";
-                cardinalityCache.put(key, cardinality);
-            } else {
-                // go to DB to see if it has this property, from this vertex id
-                Map<String, Object> queryRetMap = getVertByID(id);  
-                if (queryRetMap != null) {
-                    Object dbVal = queryRetMap.get(key);
-                    if (dbVal != null) {
-                        if(isMultipleCardinality(dbVal)){
-                            cardinality = "SET";
-                        }
-                        else {
-                            cardinality = "SINGLE";
-                        }
-                        cardinalityCache.put(key, cardinality);
-                    }
-                } 
-            }
-        } else {
-            //???  do we throw an exception?
-        }
-        if(cardinality == null){
-            cardinality = "SINGLE";
-            cardinalityCache.put(key, cardinality);
-        }
-
-        return cardinality;
-    }
+//    protected String findCardinality(String id, String key, Object val) {
+//        String cardinality;
+//
+//        cardinality = cardinalityCache.get(key);
+//        if(cardinality == null){
+//            if(isMultipleCardinality(val)){
+//                cardinality = "SET";
+//                cardinalityCache.put(key, cardinality);
+//            } else {
+//                // go to DB to see if it has this property, from this vertex id
+//                Map<String, Object> queryRetMap = getVertByID(id);  
+//                if (queryRetMap != null) {
+//                    Object dbVal = queryRetMap.get(key);
+//                    if (dbVal != null) {
+//                        if(isMultipleCardinality(dbVal)){
+//                            cardinality = "SET";
+//                        }
+//                        else {
+//                            cardinality = "SINGLE";
+//                        }
+//                        cardinalityCache.put(key, cardinality);
+//                    }
+//                } 
+//            }
+//        } else {
+//            //???  do we throw an exception?
+//        }
+//        if(cardinality == null){
+//            cardinality = "SINGLE";
+//            cardinalityCache.put(key, cardinality);
+//        }
+//
+//        return cardinality;
+//    }
     
     protected void updateVertexProperty(String id, String key, Object value)
     {
@@ -133,7 +133,7 @@ public abstract class DBConnectionBase implements DBConnectionAlignment, DBConne
      * inserts this properties new value into the specified vertex ID and key
      * @param id
      * @param key
-     * @param newValue
+     * @param newValue - All multi-value types will be Expected to be of type SET or SINGLE
      */
     protected abstract void setPropertyInDB(String id, String key, Object newValue);
     
@@ -227,6 +227,27 @@ public abstract class DBConnectionBase implements DBConnectionAlignment, DBConne
             }
         }
         return properties;
+    }
+    
+    /**
+     * Takes a map of properties and moves multivalued properties to a new map.
+     * @param properties  IN: Original map, OUT: Single-valued properties only
+     * @return Map with multi-valued properties only, where values are all Sets
+     */
+    protected Map<String, Object> separateByCardinality(Map<String, Object> properties) 
+    {
+        Map<String, Object> multiValues = new HashMap<String, Object>();
+        for (Iterator<Map.Entry<String, Object>> iter = properties.entrySet().iterator(); iter.hasNext(); ) {
+            Entry<String, Object> entry = iter.next();
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            Object newValue = convertMultiValueToSet(value);
+            if (newValue instanceof Set) {
+                multiValues.put(key, newValue);
+                iter.remove();
+            }
+        }
+        return multiValues;
     }
     
     /** Converts a Set to an Object array. */

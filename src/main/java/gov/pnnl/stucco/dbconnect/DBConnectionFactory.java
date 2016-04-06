@@ -4,7 +4,6 @@ package gov.pnnl.stucco.dbconnect;
  *
  */
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnectionFactory;
-import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnection;
 import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.titan.TitanDBConnectionFactory;
 
