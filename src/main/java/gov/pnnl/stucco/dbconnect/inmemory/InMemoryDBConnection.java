@@ -232,8 +232,12 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
             throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
         }
-        //TODO: implement
-        return null;
+        //TODO: consider faster implementations
+        Set<String> constraintIDs = new HashSet<String>(getVertIDsByConstraints(constraints));
+        Set<String> neighborIDs = new HashSet<String>(getInVertIDsByRelation(v1, relation));
+        constraintIDs.retainAll(neighborIDs);
+        List<String> ret = new LinkedList<String>(constraintIDs);
+        return ret;
     }
 
     @Override
@@ -244,8 +248,12 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
             throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
         }
-        //TODO: implement
-        return null;
+        //TODO: consider faster implementations
+        Set<String> constraintIDs = new HashSet<String>(getVertIDsByConstraints(constraints));
+        Set<String> neighborIDs = new HashSet<String>(getOutVertIDsByRelation(v1, relation));
+        constraintIDs.retainAll(neighborIDs);
+        List<String> ret = new LinkedList<String>(constraintIDs);
+        return ret;
     }
 
     @Override
@@ -256,8 +264,12 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
             throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
         }
-        //TODO: implement
-        return null;
+        //TODO: consider faster implementations
+        Set<String> constraintIDs = new HashSet<String>(getVertIDsByConstraints(constraints));
+        Set<String> neighborIDs = new HashSet<String>(getVertIDsByRelation(v1, relation));
+        constraintIDs.retainAll(neighborIDs);
+        List<String> ret = new LinkedList<String>(constraintIDs);
+        return ret;
     }
 
     @Override
