@@ -447,7 +447,15 @@ public class InMemoryDBConnection extends DBConnectionBase{
             removeVertFromIndex(vert, vertID);
             vertices.remove(vertID);
 
-            //TODO: remove edges that contain this vertID!!!!!
+            for(String edgeID: edges.keySet()){
+                Map<String, Object> currEdge = edges.get(edgeID);
+                if( ((String)currEdge.get("inVertID")).equals(vertID) ){
+                    edges.remove(edgeID);
+                }
+                else if( ((String)currEdge.get("outVertID")).equals(vertID) ){
+                    edges.remove(edgeID);
+                }
+            }
         }
     }
 
