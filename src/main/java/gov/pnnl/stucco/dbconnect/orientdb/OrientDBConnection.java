@@ -56,14 +56,14 @@ public class OrientDBConnection extends DBConnectionBase {
     
     @Override
     public int getVertCount(){
-    	//TODO: implement
-    	return 0;
+        //TODO: implement
+        return 0;
     }
 
     @Override
     public int getEdgeCount(){
-    	//TODO: implement
-    	return 0;
+        //TODO: implement
+        return 0;
     }
 
     @Override
@@ -370,14 +370,14 @@ public class OrientDBConnection extends DBConnectionBase {
     
     @Override
     public List<Map<String, Object>> getOutEdges(String outVertID){
-    	//TODO: implement
-    	return null;
+        //TODO: implement
+        return null;
     }
     
     @Override
     public List<Map<String, Object>> getInEdges(String inVertID){
-    	//TODO: implement
-    	return null;
+        //TODO: implement
+        return null;
     }
 
     @Override
@@ -466,6 +466,42 @@ public class OrientDBConnection extends DBConnectionBase {
             
         }
         return relatedIDs;
+    }
+
+    @Override
+    public List<String> getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing Vertex ID");
+        }
+        //TODO: implement
+        return null;
+    }
+
+    @Override
+    public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing Vertex ID");
+        }
+        //TODO: implement
+        return null;
+    }
+
+    @Override
+    public List<String> getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing Vertex ID");
+        }
+        //TODO: implement
+        return null;
     }
 
     /*
@@ -600,12 +636,12 @@ public class OrientDBConnection extends DBConnectionBase {
 
     @Override
     public void loadState(String filePath){
-    	//TODO: implement
+        //TODO: implement
     }
 
     @Override
     public void saveState(String filePath){
-    	//TODO: implement
+        //TODO: implement
     }
     
     /**

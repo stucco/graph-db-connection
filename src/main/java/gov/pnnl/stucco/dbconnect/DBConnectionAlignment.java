@@ -40,13 +40,6 @@ public interface DBConnectionAlignment {
     public String addVertex(Map<String, Object> properties);
 
     /**
-     * Perform a query/search of the DB using the following constraints on the request
-     * @param constraints - list of constraint objects
-     * @return list of vertex IDs
-     */
-    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints);
-
-    /**
      * create an edge given two vertex IDs with a specific relationship type
      * @param v1 - vertex ID
      * @param v2 - vertex ID
@@ -70,27 +63,65 @@ public interface DBConnectionAlignment {
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
-     * @param v1 vertex end point
-     * @param relation the relationship type of the edge
+     * @param v1 - vertex end point
+     * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
     public List<String>getInVertIDsByRelation(String v1, String relation);
 
     /**
      * Identify the vertices where their relationship type and direction leave the specified vertex
-     * @param v1 vertex starting point
-     * @param relation the relationship type of the edge
+     * @param v1 - vertex starting point
+     * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
     public List<String>getOutVertIDsByRelation(String v1, String relation);
 
     /**
      * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
-     * @param v1 - vertex ID
+     * @param v1 - vertex starting or ending point
      * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
     public List<String>getVertIDsByRelation(String v1, String relation);
+    
+    /**
+     * Identify the vertices where their relationship type and direction enter the specified vertex
+     * and where the found vertices match the following constraints
+     * @param v1 - vertex ending point
+     * @param relation - the relationship type of the edge
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    public List<String> getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
+    
+    /**
+     * Identify the vertices where their relationship type and direction leave the specified vertex
+     * and where the found vertices match the following constraints
+     * @param v1 - vertex starting point
+     * @param relation - the relationship type of the edge
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
+    
+    /**
+     * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
+     * and where the found vertices match the following constraints
+     * @param v1 - vertex starting or ending point
+     * @param relation - the relationship type of the edge
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    public List<String> getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
+    
+    /**
+     * Perform a query/search of the DB using the following constraints on the request
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints);
+    
     /**
      * Given two vertices and a relation, remove the edge
      * @param v1 - vertex ID

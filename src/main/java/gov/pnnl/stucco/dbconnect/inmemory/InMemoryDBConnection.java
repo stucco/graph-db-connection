@@ -217,6 +217,42 @@ public class InMemoryDBConnection extends DBConnectionBase{
     }
 
     @Override
+    public List<String> getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
+        }
+        //TODO: implement
+        return null;
+    }
+
+    @Override
+    public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
+        }
+        //TODO: implement
+        return null;
+    }
+
+    @Override
+    public List<String> getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
+        }
+        //TODO: implement
+        return null;
+    }
+
+    @Override
     public int getEdgeCountByRelation(String inVertID, String outVertID, String relation){
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
