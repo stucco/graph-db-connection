@@ -157,7 +157,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(outVertID == null || outVertID.equals("") || !vertices.containsKey(outVertID)){
+        if(outVertID == null || outVertID.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
         }
 
@@ -183,7 +183,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(inVertID == null || inVertID.equals("") || !vertices.containsKey(inVertID)){
+        if(inVertID == null || inVertID.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
         }
 
@@ -209,7 +209,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(vertID == null || vertID.equals("") || !vertices.containsKey(vertID)){
+        if(vertID == null || vertID.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
         }
 
@@ -229,7 +229,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
+        if(v1 == null || v1.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
         }
         //TODO: consider faster implementations
@@ -245,7 +245,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
+        if(v1 == null || v1.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
         }
         //TODO: consider faster implementations
@@ -261,7 +261,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(v1 == null || v1.equals("") || !vertices.containsKey(v1)){
+        if(v1 == null || v1.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
         }
         //TODO: consider faster implementations
@@ -277,10 +277,10 @@ public class InMemoryDBConnection extends DBConnectionBase{
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(inVertID == null || inVertID.equals("") || !vertices.containsKey(inVertID)){
+        if(inVertID == null || inVertID.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
         }
-        if(outVertID == null || outVertID.equals("") || !vertices.containsKey(outVertID)){
+        if(outVertID == null || outVertID.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
         }
 
