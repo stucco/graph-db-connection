@@ -41,11 +41,11 @@ public interface DBConnectionAlignment {
 
     /**
      * create an edge given two vertex IDs with a specific relationship type
-     * @param v1 - vertex ID
-     * @param v2 - vertex ID
+     * @param inVertID - in vertex ID
+     * @param outVertID - out vertex ID
      * @param relation - relationship type
      */
-    public void addEdge(String v1, String v2, String relation);
+    public void addEdge(String inVertID, String outVertID, String relation);
 
     /**
      * returns list of edge info maps for the outgoing edges of this vertex
@@ -124,11 +124,11 @@ public interface DBConnectionAlignment {
     
     /**
      * Given two vertices and a relation, remove the edge
-     * @param v1 - vertex ID
-     * @param v2 - vertex ID
+     * @param inVertID - in vertex ID
+     * @param outVertID - out vertex ID
      * @param relation - relationship type
      */
-    public void removeEdgeByRelation(String v1, String v2, String relation);
+    public void removeEdgeByRelation(String inVertID, String outVertID, String relation);
 
     /**
      * Given a specific vertex remove it from the DB
