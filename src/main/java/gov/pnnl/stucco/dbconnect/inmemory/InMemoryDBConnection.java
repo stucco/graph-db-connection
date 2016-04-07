@@ -81,6 +81,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * return the number of vertices
      * @return count
      */
+    @Override
     public int getVertCount(){
         return vertices.size();
     }
@@ -89,6 +90,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * return the number of edges
      * @return count
      */
+    @Override
     public int getEdgeCount(){
         return edges.size();
     }
@@ -98,6 +100,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param vertID
      * @return property map
      */
+    @Override
     public Map<String, Object> getVertByID(String vertID){
         return vertices.get(vertID);
     }
@@ -107,6 +110,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param vertName
      * @return list of edge property maps
      */
+    @Override
     public List<Map<String, Object>> getOutEdges(String outVertID) throws IllegalArgumentException{
         if(outVertID == null || outVertID.equals("") || !vertices.containsKey(outVertID)){
             throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
@@ -128,6 +132,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param vertName
      * @return list of edge property maps
      */
+    @Override
     public List<Map<String, Object>> getInEdges(String inVertID) throws IllegalArgumentException{
         if(inVertID == null || inVertID.equals("") || !vertices.containsKey(inVertID)){
             throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
@@ -147,6 +152,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param relation
      * @return list of vertices
      */
+    @Override
     public List<String> getInVertIDsByRelation(String outVertID, String relation){
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
@@ -172,6 +178,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param relation
      * @return list of vertices
      */
+    @Override
     public List<String> getOutVertIDsByRelation(String inVertID, String relation){
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
@@ -197,6 +204,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param relation
      * @return list of vertices
      */
+    @Override
     public List<String> getVertIDsByRelation(String vertID, String relation){
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
@@ -280,6 +288,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param constraints list of constraints
      * @return list of vertex IDs
      */
+    @Override
     public List<String> getVertIDsByConstraints(List<DBConstraint> constraints){
         Set<String> candidateIDs = null;
         Set<String> nonMatchingIDs = new HashSet<String>();
@@ -419,6 +428,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * remove a vertex by a vertex ID
      * @param vertID
      */
+    @Override
     public void removeVertByID(String vertID){
         Map<String,Object> vert = vertices.get(vertID);
         if(vert != null){
@@ -434,6 +444,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param vert - property map
      * @return vertexID
      */
+    @Override
     public String addVertex(Map<String, Object> vert){
         // make sure all multi-value properties are sets
         convertAllMultiValuesToSet(vert);
@@ -477,6 +488,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param outVertID - ID of the outgoing vertex edge
      * @param relation - type of edge relation
      */
+    @Override
     public void addEdge(String inVertID, String outVertID, String relation){
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot add edge with missing or invlid relation");
@@ -504,6 +516,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @param vertID
      * @param newVert - property map
      */
+    @Override
     public void updateVertex(String vertID, Map<String, Object> newVert){
         Map<String, Object> oldVert = vertices.get(vertID);
         if(oldVert == null){
@@ -588,6 +601,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
         vertices.get(id).put(key, newValue);
     }
 
+    @Override
     public void loadState(String filePath) {
         try {
             InputStream is = new FileInputStream(filePath);
@@ -641,6 +655,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
     }
 
     //TODO: tests
+    @Override
     public void saveState(String filePath) {
         try {
             OutputStream os = new FileOutputStream(filePath);
