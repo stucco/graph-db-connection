@@ -130,6 +130,8 @@ extends TestCase
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
+        assertEquals(2, conn.getVertCount());
+        assertEquals(0, conn.getEdgeCount());
 
         //find this node, check some properties.
         String id = getVertIDByName("CVE-1999-0002");
@@ -157,6 +159,8 @@ extends TestCase
         conn.addEdge(id, id2, "sameAs");
 
         //and now we can test the edge between them
+        assertEquals(2, conn.getVertCount());
+        assertEquals(1, conn.getEdgeCount());
         int c1 = conn.getEdgeCountByRelation(id, id2, "sameAs");
         int c2 = conn.getEdgeCountByRelation(id2, id, "sameAs");
         assertEquals(1, c1);
@@ -194,9 +198,11 @@ extends TestCase
         //confirm the nodes and edges above
         String id1_t = getVertIDByName("CVE-0001-0001");
         String id2_t = getVertIDByName("CVE-0001-0002");
-
         assertEquals(id1, id1_t);
         assertEquals(id2, id2_t);
+
+        assertEquals(2, conn.getVertCount());
+        assertEquals(1, conn.getEdgeCount());
 
         assertEquals(1, conn.getOutVertIDsByRelation(id1, relation).size());
         assertEquals(id2, conn.getOutVertIDsByRelation(id1, relation).get(0));
@@ -210,6 +216,8 @@ extends TestCase
         conn.removeEdgeByRelation(id2, id1, relation);
         conn.removeEdgeByRelation(id1, id1, relation);
         conn.removeEdgeByRelation(id2, id2, relation);
+        assertEquals(2, conn.getVertCount());
+        assertEquals(1, conn.getEdgeCount());
 
         assertEquals(1, conn.getOutVertIDsByRelation(id1, relation).size());
         assertEquals(id2, conn.getOutVertIDsByRelation(id1, relation).get(0));
@@ -221,14 +229,22 @@ extends TestCase
 
         //now remove the edge
         conn.removeEdgeByRelation(id1, id2, relation);
+        assertEquals(2, conn.getVertCount());
+        assertEquals(0, conn.getEdgeCount());
 
         assertEquals(0, conn.getOutVertIDsByRelation(id1, relation).size());
         assertEquals(0, conn.getInVertIDsByRelation(id1, relation).size());
         assertEquals(0, conn.getInVertIDsByRelation(id2, relation).size());
         assertEquals(0, conn.getOutVertIDsByRelation(id2, relation).size());
 
+        assertEquals(2, conn.getVertCount());
+        assertEquals(0, conn.getEdgeCount());
+
         //re-add the edge, and confirm that removing one of its vertices removes the edge.
         conn.addEdge(id1, id2, relation);
+        assertEquals(2, conn.getVertCount());
+        assertEquals(1, conn.getEdgeCount());
+
         conn.removeVertByID(id2);
         //confirm vertex was removed
         assertEquals(0, getVertIDsByName("CVE-0001-0002").size());
@@ -238,6 +254,9 @@ extends TestCase
         assertEquals(0, conn.getInVertIDsByRelation(id1, relation).size());
         assertEquals(0, conn.getInVertIDsByRelation(id2, relation).size());
         assertEquals(0, conn.getOutVertIDsByRelation(id2, relation).size());
+
+        assertEquals(1, conn.getVertCount());
+        assertEquals(0, conn.getEdgeCount());
     }
 
     /**
@@ -254,6 +273,8 @@ extends TestCase
                 "\"name\":\"testvert_55\"" +
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
+        assertEquals(1, conn.getVertCount());
+        assertEquals(0, conn.getEdgeCount());
 
         //get some properties
         String id = getVertIDByName("testvert_55");
@@ -319,6 +340,8 @@ extends TestCase
         expectedSources = new HashSet<String>( Arrays.asList("aaaa", "bbbb", "eeee", "ffff", "gggg", "hhhh" ) );
         assertEquals(expectedSources, vertProps.get("source"));
 
+        assertEquals(1, conn.getVertCount());
+        assertEquals(0, conn.getEdgeCount());
     }
 
     /**
