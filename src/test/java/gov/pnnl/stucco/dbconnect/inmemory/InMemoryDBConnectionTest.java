@@ -173,6 +173,72 @@ extends TestCase
 
     }
 
+    /**
+     * Tests deleting vertices and edges.
+     */
+    public void testDelete()
+    {
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
+
+        String vert1 = "{" +
+                "\"name\":\"CVE-0001-0001\"," +
+                "}";
+        String vert2 = "{"+
+                "\"name\":\"CVE-0001-0002\"," +
+                "}";
+        String id1 = conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
+        String id2 = conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
+        String relation = "asdf";
+        conn.addEdge(id1, id2, relation);
+
+        //confirm the nodes and edges above
+        String id1_t = getVertIDByName("CVE-0001-0001");
+        String id2_t = getVertIDByName("CVE-0001-0002");
+
+        assertEquals(id1, id1_t);
+        assertEquals(id2, id2_t);
+
+        assertEquals(1, conn.getOutVertIDsByRelation(id1, relation).size());
+        assertEquals(id2, conn.getOutVertIDsByRelation(id1, relation).get(0));
+        assertEquals(0, conn.getInVertIDsByRelation(id1, relation).size());
+
+        assertEquals(1, conn.getInVertIDsByRelation(id2, relation).size());
+        assertEquals(id1, conn.getInVertIDsByRelation(id2, relation).get(0));
+        assertEquals(0, conn.getOutVertIDsByRelation(id2, relation).size());
+
+        //remove edges that we didn't add
+        conn.removeEdgeByRelation(id2, id1, relation);
+        conn.removeEdgeByRelation(id1, id1, relation);
+        conn.removeEdgeByRelation(id2, id2, relation);
+
+        assertEquals(1, conn.getOutVertIDsByRelation(id1, relation).size());
+        assertEquals(id2, conn.getOutVertIDsByRelation(id1, relation).get(0));
+        assertEquals(0, conn.getInVertIDsByRelation(id1, relation).size());
+
+        assertEquals(1, conn.getInVertIDsByRelation(id2, relation).size());
+        assertEquals(id1, conn.getInVertIDsByRelation(id2, relation).get(0));
+        assertEquals(0, conn.getOutVertIDsByRelation(id2, relation).size());
+
+        //now remove the edge
+        conn.removeEdgeByRelation(id1, id2, relation);
+
+        assertEquals(0, conn.getOutVertIDsByRelation(id1, relation).size());
+        assertEquals(0, conn.getInVertIDsByRelation(id1, relation).size());
+        assertEquals(0, conn.getInVertIDsByRelation(id2, relation).size());
+        assertEquals(0, conn.getOutVertIDsByRelation(id2, relation).size());
+
+        //re-add the edge, and confirm that removing one of its vertices removes the edge.
+        conn.addEdge(id1, id2, relation);
+        conn.removeVertByID(id2);
+        //confirm vertex was removed
+        assertEquals(0, getVertIDsByName("CVE-0001-0002").size());
+        assertNull(conn.getVertByID(id2));
+        //confirm edge was removed
+        assertEquals(0, conn.getOutVertIDsByRelation(id1, relation).size());
+        assertEquals(0, conn.getInVertIDsByRelation(id1, relation).size());
+        assertEquals(0, conn.getInVertIDsByRelation(id2, relation).size());
+        assertEquals(0, conn.getOutVertIDsByRelation(id2, relation).size());
+    }
 
     /**
      * Tests updating vertex properties
