@@ -38,6 +38,7 @@ extends TestCase
         if (config == null) {
             throw (new NullPointerException("Missing environment variable STUCCO_DB_CONFIG"));
         }
+        
         factory.setConfiguration(config);
 
     }
