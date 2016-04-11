@@ -709,6 +709,77 @@ extends TestCase
         assertEquals(1, ids.size());
     }
 
+    /**
+     * creates a small set of vertices, searches neighboring vertices by constraints on properties
+     */
+    public void testRelationConstraints()
+    {
+        //InMemoryDBConnection conn = new InMemoryDBConnection();
+        Map<String, Object> vert;
+        List<DBConstraint> constraints;
+        List<String> ids;
+        List<String> expectedIds;
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "center");
+        String id_center = conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "aaa_5");
+        vert.put("aaa", 5);
+        String id_aaa_5 = conn.addVertex(vert);
+        conn.addEdge(id_aaa_5, id_center, "r");
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "aaa_6");
+        vert.put("aaa", 6);
+        String id_aaa_6 = conn.addVertex(vert);
+        conn.addEdge(id_aaa_6, id_center, "r");
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "aaa_7");
+        vert.put("aaa", 7);
+        String id_aaa_7 = conn.addVertex(vert);
+        conn.addEdge(id_aaa_7, id_center, "r");
+
+        DBConstraint c1 = new InMemoryConstraint("aaa", Condition.eq, new Integer(5) );
+        constraints = new LinkedList<DBConstraint>();
+        constraints.add(c1);
+
+        ids = conn.getInVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(1, ids.size());
+        assertTrue(ids.contains(getVertIDByName("aaa_5")));
+        ids = conn.getOutVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(0, ids.size());
+
+        List<DBConstraint> emptyConstraints = new LinkedList<DBConstraint>();
+        ids = conn.getOutVertIDsByRelation(id_aaa_5, "r", emptyConstraints);
+        assertEquals(1, ids.size());
+        assertEquals(id_center, ids.get(0));
+        ids = conn.getInVertIDsByRelation(id_aaa_5, "r", emptyConstraints);
+        assertEquals(0, ids.size());
+
+        ids = conn.getVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(1, ids.size());
+        assertEquals(getVertIDByName("aaa_5"), ids.get(0));
+
+
+        c1 = new InMemoryConstraint("aaa", Condition.neq, new Integer(5) );
+        constraints = new LinkedList<DBConstraint>();
+        constraints.add(c1);
+
+        ids = conn.getInVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains(id_aaa_6));
+        assertTrue(ids.contains(id_aaa_7));
+        ids = conn.getOutVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(0, ids.size());
+
+        ids = conn.getVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains(id_aaa_6));
+        assertTrue(ids.contains(id_aaa_7));
+    }
 }
 
 
