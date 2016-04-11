@@ -216,8 +216,10 @@ public class InMemoryDBConnection extends DBConnectionBase{
         List<String> relatedIDs = new LinkedList<String>();
         for(Map<String, Object> currEdge : edges.values()){
             if( ((String)currEdge.get("relation")).equals(relation) ){
-                if( ((String)currEdge.get("inVertID")).equals(vertID) || ((String)currEdge.get("outVertID")).equals(vertID)){
+                if( ((String)currEdge.get("inVertID")).equals(vertID) ){
                     relatedIDs.add( (String)currEdge.get("outVertID") ); //TODO: check valid state here?
+                }else if( ((String)currEdge.get("outVertID")).equals(vertID) ){
+                    relatedIDs.add( (String)currEdge.get("inVertID") ); //TODO: check valid state here?
                 }
             }
         }
