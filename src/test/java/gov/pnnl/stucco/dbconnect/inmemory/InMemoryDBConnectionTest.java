@@ -170,10 +170,41 @@ extends TestCase
         matchingIDs = conn.getInVertIDsByRelation(id2, "sameAs");
         assertEquals(1, matchingIDs.size());
         assertEquals(id, matchingIDs.get(0));
+        matchingIDs = conn.getOutVertIDsByRelation(id2, "sameAs");
+        assertEquals(0, matchingIDs.size());
 
         matchingIDs = conn.getOutVertIDsByRelation(id, "sameAs");
         assertEquals(1, matchingIDs.size());
         assertEquals(id2, matchingIDs.get(0));
+        matchingIDs = conn.getInVertIDsByRelation(id, "sameAs");
+        assertEquals(0, matchingIDs.size());
+
+        matchingIDs = conn.getVertIDsByRelation(id, "sameAs");
+        assertEquals(1, matchingIDs.size());
+        assertEquals(id2, matchingIDs.get(0));
+        matchingIDs = conn.getVertIDsByRelation(id2, "sameAs");
+        assertEquals(1, matchingIDs.size());
+        assertEquals(id, matchingIDs.get(0));
+
+        List<Map<String,Object>> matchingEdges = null;
+        Map<String,Object> matchingEdge = null;
+        matchingEdges = conn.getOutEdges(id2);
+        assertEquals(1, matchingEdges.size());
+        matchingEdge = matchingEdges.get(0);
+        assertEquals(id, matchingEdge.get("inVertID"));
+        assertEquals(id2, matchingEdge.get("outVertID"));
+        assertEquals("sameAs", matchingEdge.get("relation"));
+        matchingEdges = conn.getInEdges(id2);
+        assertEquals(0, matchingEdges.size());
+
+        matchingEdges = conn.getInEdges(id);
+        assertEquals(1, matchingEdges.size());
+        matchingEdge = matchingEdges.get(0);
+        assertEquals(id, matchingEdge.get("inVertID"));
+        assertEquals(id2, matchingEdge.get("outVertID"));
+        assertEquals("sameAs", matchingEdge.get("relation"));
+        matchingEdges = conn.getOutEdges(id);
+        assertEquals(0, matchingEdges.size());
 
     }
 
