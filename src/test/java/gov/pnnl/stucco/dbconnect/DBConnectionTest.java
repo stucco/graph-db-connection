@@ -617,15 +617,6 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         assertEquals(0, ids.size());
-
-        c1 = conn.getConstraint("bbb", Condition.contains, 103.0);
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
-        expectedIds = new LinkedList<String>();
-        expectedIds.add(getVertIDByName("bbb_101_102_103"));
-        assertTrue(ids.containsAll(expectedIds));
-        assertEquals(1, ids.size());
     }
 
 
