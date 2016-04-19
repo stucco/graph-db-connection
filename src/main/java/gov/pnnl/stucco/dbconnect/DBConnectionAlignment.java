@@ -12,18 +12,16 @@ import java.util.List;
  *
  */
 public interface DBConnectionAlignment {
-
+    
     /**
-     * return the number of vertices
-     * @return count
+     * gets the number of vertices in the graph
      */
-    public int getVertCount();
-
+    public long getVertCount();
+    
     /**
-     * return the number of edges
-     * @return count
+     * gets the number of edges in the graph
      */
-    public int getEdgeCount();
+    public long getEdgeCount();
 
     /**
      * Retrieves the vertex's property map as referenced by the vertex ID

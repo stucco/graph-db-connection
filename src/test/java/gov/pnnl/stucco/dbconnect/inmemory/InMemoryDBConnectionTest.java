@@ -5,8 +5,6 @@ import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
-import gov.pnnl.stucco.dbconnect.inmemory.InMemoryConstraint;
-import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnection;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,15 +15,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import junit.extensions.TestSetup;
-import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
 
 import org.json.JSONObject;
 
 /**
- * Unit test for simple App.
+ * Unit test for generically Testing the DBConnection
+ * NOTE: two environment variable must be defined:
+ *       STUCCO_DB_CONFIG=<path/filename.yml>
+ *       STUCCO_DB_TYPE= INMEMORY|ORIENTDB|TITAN|NEO4J
  */
 public class InMemoryDBConnectionTest 
 extends TestCase
@@ -103,28 +101,26 @@ extends TestCase
      */
     public void testLoad()
     {
-        //InMemoryDBConnection conn = new InMemoryDBConnection();
-
         String vert1 = "{" +
                 "\"name\":\"CVE-1999-0002\"," +
                 "\"_type\":\"vertex\","+
                 "\"source\":[\"CVE\"],"+
                 "\"description\":\"Buffer overflow in NFS mountd gives root access to remote attackers, mostly in Linux systems.\","+
                 "\"references\":["+
-                "\"CERT:CA-98.12.mountd\","+
-                "\"http://www.ciac.org/ciac/bulletins/j-006.shtml\","+
-                "\"http://www.securityfocus.com/bid/121\","+
-                "\"XF:linux-mountd-bo\"],"+
+                    "\"CERT:CA-98.12.mountd\","+
+                    "\"http://www.ciac.org/ciac/bulletins/j-006.shtml\","+
+                    "\"http://www.securityfocus.com/bid/121\","+
+                    "\"XF:linux-mountd-bo\"],"+
                 "\"status\":\"Entry\","+
-                "\"score\":1.0"+
+                "\"score\":1.0,"+
+                "\"foo\":1"+
                 "}";
         String vert2 = "{"+
                 "\"name\":\"CVE-1999-nnnn\"," +
                 "\"_type\":\"vertex\","+
                 "\"source\":[\"CVE\"],"+
                 "\"description\":\"test description asdf.\","+
-                "\"references\":["+
-                "\"http://www.google.com\"],"+
+                "\"references\":[\"http://www.google.com\"],"+
                 "\"status\":\"Entry\","+
                 "\"score\":1.0"+
                 "}";
@@ -206,6 +202,23 @@ extends TestCase
         matchingEdges = conn.getOutEdges(id);
         assertEquals(0, matchingEdges.size());
 
+        long vertCount = conn.getVertCount();
+        assertEquals(2, vertCount);
+        
+        long edgeCount = conn.getEdgeCount();
+        assertEquals(1, edgeCount);
+        
+        List<Map<String,Object>> resultsID = conn.getInEdges(id);
+        List<Map<String,Object>> resultsID2 = conn.getInEdges(id2); 
+        
+        assertEquals(1, resultsID.size());
+        assertEquals(0, resultsID2.size());
+        
+        resultsID = conn.getOutEdges(id); 
+        resultsID2 = conn.getOutEdges(id2);
+        
+        assertEquals(0, resultsID.size());
+        assertEquals(1, resultsID2.size());
     }
 
     /**
@@ -213,8 +226,6 @@ extends TestCase
      */
     public void testDelete()
     {
-        //InMemoryDBConnection conn = new InMemoryDBConnection();
-
         String vert1 = "{" +
                 "\"name\":\"CVE-0001-0001\"," +
                 "}";
@@ -295,8 +306,6 @@ extends TestCase
      */
     public void testUpdate()
     {
-        //InMemoryDBConnection conn = new InMemoryDBConnection();
-
         String vert1 = "{"+
                 "\"endIPInt\":55," +
                 "\"_type\":\"vertex\","+
@@ -313,6 +322,8 @@ extends TestCase
         assertEquals( "55", vertProps.get("endIPInt").toString());
         assertEquals( "[aaaa]", vertProps.get("source").toString());
         Map<String, Object> newProps = new HashMap<String, Object>();
+        newProps.put("source", new String[] {"aaaa"});
+        conn.updateVertex(id, newProps);
 
         //add a single item to a set-type property - throws an exception
         newProps.put("source", "zzzz");
@@ -380,18 +391,16 @@ extends TestCase
      */
     public void testHighForwardDegreeVerts()
     {
-        //InMemoryDBConnection conn = new InMemoryDBConnection();
-
         String vert1 = "{" +
                 "\"name\":\"/usr/local/something\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"software\""+
                 "}";
         String vert2 = "{" +
                 "\"name\":\"11.11.11.11:1111_to_22.22.22.22:1\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"flow\""+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
@@ -419,7 +428,7 @@ extends TestCase
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:1111_to_22.22.22.22:" + i + "\"," +
                     "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"flow\""+
                     "}";
             String currentId = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
@@ -442,18 +451,16 @@ extends TestCase
      */
     public void testHighReverseDegreeVerts()
     {
-        //InMemoryDBConnection conn = new InMemoryDBConnection();
-
         String vert1 = "{" +
                 "\"name\":\"11.11.11.11:1111\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"address\""+
                 "}";
         String vert2 = "{" +
                 "\"name\":\"11.11.11.11\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"IP\""+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
@@ -482,7 +489,7 @@ extends TestCase
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:" + i + "\"," +
                     "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"address\""+
                     "}";
             String currentId = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
@@ -505,7 +512,6 @@ extends TestCase
      */
     public void testConstraints()
     {
-        //InMemoryDBConnection conn = new InMemoryDBConnection();
         Map<String, Object> vert;
         List<DBConstraint> constraints;
         String id;
@@ -527,14 +533,14 @@ extends TestCase
         vert.put("aaa", 7);
         conn.addVertex(vert);
 
-        DBConstraint c1 = new InMemoryConstraint("aaa", Condition.eq, new Integer(5) );
+        DBConstraint c1 = conn.getConstraint("aaa", Condition.eq, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         assertEquals(1, ids.size());
         assertTrue(ids.contains(getVertIDByName("aaa_5")));
 
-        c1 = new InMemoryConstraint("aaa", Condition.neq, new Integer(5) );
+        c1 = conn.getConstraint("aaa", Condition.neq, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
@@ -544,7 +550,7 @@ extends TestCase
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
-        c1 = new InMemoryConstraint("aaa", Condition.gt, new Integer(5) );
+        c1 = conn.getConstraint("aaa", Condition.gt, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
@@ -554,7 +560,7 @@ extends TestCase
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
 
-        c1 = new InMemoryConstraint("aaa", Condition.gte, new Integer(5) );
+        c1 = conn.getConstraint("aaa", Condition.gte, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
@@ -565,14 +571,14 @@ extends TestCase
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(3, ids.size());
 
-        c1 = new InMemoryConstraint("aaa", Condition.lt, new Integer(6) );
+        c1 = conn.getConstraint("aaa", Condition.lt, new Integer(6) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         assertTrue(ids.contains(getVertIDByName("aaa_5")));
         assertEquals(1, ids.size());
 
-        c1 = new InMemoryConstraint("aaa", Condition.lte, new Integer(6) );
+        c1 = conn.getConstraint("aaa", Condition.lte, new Integer(6) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
@@ -762,7 +768,6 @@ extends TestCase
         ids = conn.getVertIDsByRelation(id_center, "r", constraints);
         assertEquals(1, ids.size());
         assertEquals(getVertIDByName("aaa_5"), ids.get(0));
-
 
         c1 = new InMemoryConstraint("aaa", Condition.neq, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();

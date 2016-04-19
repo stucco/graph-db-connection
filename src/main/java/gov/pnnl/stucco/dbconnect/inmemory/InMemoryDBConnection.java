@@ -2,9 +2,6 @@ package gov.pnnl.stucco.dbconnect.inmemory;
 
 import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionBase;
-import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
-import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
-import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 
 import java.io.FileInputStream;
@@ -13,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,9 +26,8 @@ import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
 
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import org.slf4j.Logger;
 
 /**
  * This class represents a concrete implementation of an in-memory DB Connection Type
@@ -82,7 +79,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @return count
      */
     @Override
-    public int getVertCount(){
+    public long getVertCount(){
         return vertices.size();
     }
 
@@ -91,7 +88,7 @@ public class InMemoryDBConnection extends DBConnectionBase{
      * @return count
      */
     @Override
-    public int getEdgeCount(){
+    public long getEdgeCount(){
         return edges.size();
     }
 

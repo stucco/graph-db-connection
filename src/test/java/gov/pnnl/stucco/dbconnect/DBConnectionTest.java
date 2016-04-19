@@ -1,9 +1,6 @@
 package gov.pnnl.stucco.dbconnect;
 
 
-import gov.pnnl.stucco.dbconnect.Condition;
-import gov.pnnl.stucco.dbconnect.DBConstraint;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -13,10 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import junit.extensions.TestSetup;
-import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
 
 import org.json.JSONObject;
 
@@ -45,6 +39,7 @@ extends TestCase
         if (config == null) {
             throw (new NullPointerException("Missing environment variable STUCCO_DB_CONFIG"));
         }
+        
         factory.setConfiguration(config);
 
     }
@@ -140,10 +135,10 @@ extends TestCase
                 "\"source\":[\"CVE\"],"+
                 "\"description\":\"Buffer overflow in NFS mountd gives root access to remote attackers, mostly in Linux systems.\","+
                 "\"references\":["+
-                "\"CERT:CA-98.12.mountd\","+
-                "\"http://www.ciac.org/ciac/bulletins/j-006.shtml\","+
-                "\"http://www.securityfocus.com/bid/121\","+
-                "\"XF:linux-mountd-bo\"],"+
+                    "\"CERT:CA-98.12.mountd\","+
+                    "\"http://www.ciac.org/ciac/bulletins/j-006.shtml\","+
+                    "\"http://www.securityfocus.com/bid/121\","+
+                    "\"XF:linux-mountd-bo\"],"+
                 "\"status\":\"Entry\","+
                 "\"score\":1.0,"+
                 "\"foo\":1"+
@@ -153,13 +148,13 @@ extends TestCase
                 "\"_type\":\"vertex\","+
                 "\"source\":[\"CVE\"],"+
                 "\"description\":\"test description asdf.\","+
-                "\"references\":["+
-                "\"http://www.google.com\"],"+
+                "\"references\":[\"http://www.google.com\"],"+
                 "\"status\":\"Entry\","+
                 "\"score\":1.0"+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert2)));
+        
 
         //find this node, check some properties.
         String id = getVertIDByName("CVE-1999-0002");
@@ -200,6 +195,24 @@ extends TestCase
         matchingIDs = conn.getOutVertIDsByRelation(id, "sameAs");
         assertEquals(1, matchingIDs.size());
         assertEquals(id2, matchingIDs.get(0));
+
+        long vertCount = conn.getVertCount();
+        assertEquals(2, vertCount);
+        
+        long edgeCount = conn.getEdgeCount();
+        assertEquals(1, edgeCount);
+        
+        List<Map<String,Object>> resultsID = conn.getInEdges(id);
+        List<Map<String,Object>> resultsID2 = conn.getInEdges(id2); 
+        
+        assertEquals(1, resultsID.size());
+        assertEquals(0, resultsID2.size());
+        
+        resultsID = conn.getOutEdges(id); 
+        resultsID2 = conn.getOutEdges(id2);
+        
+        assertEquals(0, resultsID.size());
+        assertEquals(1, resultsID2.size());
 
     }
 
@@ -293,13 +306,13 @@ extends TestCase
         String vert1 = "{" +
                 "\"name\":\"/usr/local/something\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"software\""+
                 "}";
         String vert2 = "{" +
                 "\"name\":\"11.11.11.11:1111_to_22.22.22.22:1\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"flow\""+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
@@ -327,7 +340,7 @@ extends TestCase
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:1111_to_22.22.22.22:" + i + "\"," +
                     "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"flow\""+
                     "}";
             String currentId = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));
@@ -354,13 +367,13 @@ extends TestCase
         String vert1 = "{" +
                 "\"name\":\"11.11.11.11:1111\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"address\""+
                 "}";
         String vert2 = "{" +
                 "\"name\":\"11.11.11.11\"," +
                 "\"_type\":\"vertex\","+
-                "\"source\":\"test\","+
+                "\"source\":[\"test\"],"+
                 "\"vertexType\":\"IP\""+
                 "}";
         conn.addVertex(conn.jsonVertToMap(new JSONObject(vert1)));
@@ -389,7 +402,7 @@ extends TestCase
             String currentVert = "{" +
                     "\"name\":\"11.11.11.11:" + i + "\"," +
                     "\"_type\":\"vertex\","+
-                    "\"source\":\"test\","+
+                    "\"source\":[\"test\"],"+
                     "\"vertexType\":\"address\""+
                     "}";
             String currentId = conn.addVertex(conn.jsonVertToMap(new JSONObject(currentVert)));

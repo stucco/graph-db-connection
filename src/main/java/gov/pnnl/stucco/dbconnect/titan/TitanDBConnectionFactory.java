@@ -1,4 +1,4 @@
-package gov.pnnl.stucco.dbconnect.orientdb;
+package gov.pnnl.stucco.dbconnect.titan;
 
 import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
@@ -6,16 +6,16 @@ import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
 import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
 
 /**
- * This is a concrete Factory for the OrientDB instance of a DB
+ * This is a concrete Factory for the Titan instance of a DB
  *
  */
-public class OrientDBConnectionFactory extends DBConnectionFactory {
+public class TitanDBConnectionFactory extends DBConnectionFactory {
     
     
     /**
      * constructor of the factory
      */
-    public OrientDBConnectionFactory() {
+    public TitanDBConnectionFactory() {
         super();
     }
     
@@ -24,7 +24,7 @@ public class OrientDBConnectionFactory extends DBConnectionFactory {
      */
     public DBConnectionAlignment getDBConnectionAlignment() {
 
-        return new OrientDBConnection(configuration);
+        return new TitanDBConnection(configuration);
 
     }
 
@@ -36,7 +36,7 @@ public class OrientDBConnectionFactory extends DBConnectionFactory {
     @Override
     public DBConnectionIndexerInterface getDBConnectionIndexer() {
         
-        return new OrientDBConnection(configuration);
+        return new TitanDBConnection(configuration);
     }
 
     /**
@@ -44,7 +44,7 @@ public class OrientDBConnectionFactory extends DBConnectionFactory {
      */
     @Override
     public DBConnectionTestInterface getDBConnectionTestInterface() {
-        return new OrientDBConnection(configuration);
+        return new TitanDBConnection(configuration);
     }
 
 }

@@ -1,7 +1,8 @@
-package gov.pnnl.stucco.dbconnect.orientdb;
+package gov.pnnl.stucco.dbconnect.titan;
 
 import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
+import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -11,7 +12,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -20,25 +20,23 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
-import com.orientechnologies.orient.core.exception.OSchemaException;
-import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
-
+//BELOW FROM ORIGINAL TITAN GREMLIN 
 /**
- * Parses the Stucco index specification, in order to set up indexes. The index 
- * specification format is assumed to be the following JSON:
+ * Parses the Stucco index specification, in order to issue Gremlin requests for
+ * setting up indexes. The index specification format is assumed to be the 
+ * following JSON:
  * 
  * <pre><block>
  * 
  * "indexes": [ 
  *   {
- *     type: ("NOTUNIQUE"|"FULLTEXT")
+ *     type: ("composite"|"mixed")
  *     keys: [
  *       {
  *         "name": propertyName
  *         "class": ("String"|"Character"|"Boolean"|"Byte"|"Short"|"Integer"|"Long"|"Float"|"Double"|"Decimal"|"Precision"|"Geoshape")
+ *         "cardinality": ("SINGLE"|"LIST"|"SET")
  *       }
  *       ...
  *     ]
@@ -48,8 +46,9 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex;
  *         
  * </block></pre>
  */
-public class IndexDefinitionsToOrientDB {
-    private static final Logger logger = LoggerFactory.getLogger(IndexDefinitionsToOrientDB.class);
+
+public class IndexDefinitionsToTitanGremlin {
+    private static final Logger logger = LoggerFactory.getLogger(IndexDefinitionsToTitanGremlin.class);
 
     // Keys within the index specification JSON
     private static final String INDEXES = "indexes";
@@ -57,13 +56,17 @@ public class IndexDefinitionsToOrientDB {
     private static final String KEYS = "keys";
     private static final String NAME = "name";
     private static final String CLASS = "class";
+    private static final String CARDINALITY = "cardinality";
     
     // Other String constants
     private static final String STRING = "String";
+    private static final String COMPOSITE = "composite";
+    private static final String MIXED = "mixed";
 
+    
     /** Our gateway to the DB. */
     private DBConnectionIndexerInterface dbConnection;
-    
+
     /** Counter used to generate unique index names. */
     private int indexNumber = 0;
     
@@ -71,12 +74,12 @@ public class IndexDefinitionsToOrientDB {
     private Set<String> propertyNames = new HashSet<String>();
 
     
-    public IndexDefinitionsToOrientDB() {
+    public IndexDefinitionsToTitanGremlin() {
         // Instantiable but only from this file    
     }
     
     /**
-     * specifies the orientDB dbconnection 
+     * specifies the Titan dbconnection 
      * @param dbConnection
      */
     public void setDBConnection(DBConnectionIndexerInterface dbConnection) {
@@ -114,25 +117,35 @@ public class IndexDefinitionsToOrientDB {
      */
     private void parseIndexSpec(JSONObject indexSpec) {
         StringBuilder request = new StringBuilder();
+        request.append("m = g.getManagementSystem();");
         
         String type = indexSpec.getString(TYPE);
         JSONArray keys = indexSpec.getJSONArray(KEYS);
         
         List<String> propertyNames = new ArrayList<String>();
-        String propertyDeclarations = buildPropertyDeclarations(keys, propertyNames);
+        String propertyDeclarations = buildPropertyDeclarations(keys, propertyNames);       
         request.append(propertyDeclarations);
-        this.propertyNames.addAll(propertyNames); // a global list of all property Names
         
-        buildIndexDeclaration(type, propertyNames);
+        String indexDeclaration = buildIndexDeclaration(type, propertyNames);
+        if (indexDeclaration.isEmpty()) {
+            // Couldn't create it
+            logger.error(String.format("Couldn't create index (type = %s)", type));
+            return;
+        }
+        
+        request.append(indexDeclaration);
+        
+        request.append("m.commit();");
+        executeRexsterRequest(request.toString());
     }
 
     /**
-     * Builds OrientDB declaration for the properties used in an index.
+     * Builds Gremlin declaration for the properties used in an index.
      * 
      * @param keys           The keys in JSON form
      * @param propertyNames  (OUT) The names of the keys, returned by side effect
      * 
-     * @return OrientDB declaration of properties
+     * @return Gremlin declaration of properties
      */
     private String buildPropertyDeclarations(JSONArray keys, List<String> propertyNames) {
         StringBuilder declarations = new StringBuilder();
@@ -152,75 +165,99 @@ public class IndexDefinitionsToOrientDB {
                 classType = STRING;
             }
             
-            try {
-                // Make the property declaration for the key
-                String declaration = buildPropertyDeclaration(property, classType);
-                ((OrientDBConnection)dbConnection).<OrientDynaElementIterable>executeSQL(declaration);
-                ((OrientDBConnection)dbConnection).commit();
-                declarations.append(declaration);
-            } catch (OCommandExecutionException e) {
-                // Intercept error to print debug info
-                String stackTrace = getStackTrace(e);
-                logger.error(String.format("Failed to generate property '%s'", property));
-                logger.error(stackTrace);
-                
-                // Re-throw up the stack
-                throw e;
+            // Get the cardinality, defaulting to SINGLE
+            String cardinality = keySpec.optString(CARDINALITY);
+            if (cardinality == null) {
+                cardinality = "";
             }
+
+            // Make the property declaration for the key
+            String declaration = buildPropertyDeclaration(property, classType, cardinality);
+            declarations.append(declaration);
         }
         
         return declarations.toString();
     }
     
-    /** Converts a Throwable to a String. */
-    private String getStackTrace(Throwable t) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        t.printStackTrace(pw);
-        String str = sw.toString(); 
-        return str;    
-    }
+//    /** Converts a Throwable to a String. */
+//    private String getStackTrace(Throwable t) {
+//        StringWriter sw = new StringWriter();
+//        PrintWriter pw = new PrintWriter(sw);
+//        t.printStackTrace(pw);
+//        String str = sw.toString(); 
+//        return str;    
+//    }
     
     /** 
      * Builds the declaration of a new property. 
      * 
      * @param propertyName  Name of property
      * @param classType     Class type of property
+     * @param cardinality   Cardinality of property ("" means don't declare) 
      */
-    private String buildPropertyDeclaration(String propertyName, String classType) {
+    private String buildPropertyDeclaration(String propertyName, String classType, String cardinality) {
         // Normalize to forms needed in request
         propertyName = propertyName.trim();
         classType = capitalize(classType.trim());
+        cardinality = cardinality.trim().toUpperCase();
 
         // Build the declaration
-        String declaration = String.format("CREATE PROPERTY V.%s %s", propertyName, classType);
+        StringBuilder declaration = new StringBuilder();
+        declaration.append(String.format("m.makePropertyKey('%s')", propertyName));
+        declaration.append(String.format(".dataType(%s.class)", classType));
+        if (!cardinality.isEmpty()) {
+            declaration.append(String.format(".cardinality(Cardinality.%s)", cardinality));
+        }
+        declaration.append(".make();");
 
-        return declaration;
+        return declaration.toString();
     }
     
-    /** Builds a DB index declaration. */
-    private void buildIndexDeclaration(String indexType, List<String> propertyKeys) {
+    /** Builds a Gremlin index declaration. */
+    private String buildIndexDeclaration(String indexType, List<String> propertyKeys) {
+        StringBuilder declaration = new StringBuilder();
         
-        for(String key : propertyKeys) {
-            try {
-                // Make up a name
-                String indexName = generateIndexName();        
-                String declaration = String.format("CREATE INDEX %s ON V (%s) %s", indexName, key, indexType);
-                ((OrientDBConnection)dbConnection).<Integer>executeSQL(declaration);
-                ((OrientDBConnection)dbConnection).commit();
-            } catch (OCommandExecutionException e) {
-                // Intercept error so we can report it
-                String stackTrace = getStackTrace(e);
-                logger.error(String.format("Failed to create index for '%s'", key));
-                logger.error(stackTrace); 
-                
-                // Re-throw up the stack
-                throw e;
-            }
+        // Make up a name
+        String indexName = generateIndexName();
+        declaration.append(String.format("m.buildIndex('%s', Vertex.class)", indexName));
+ 
+        
+        String keysDeclaration = buildAddKeysDeclaration(propertyKeys);
+        if (keysDeclaration.isEmpty()) {
+            // Couldn't because one or more keys was already used
+            return "";
         }
         
+        declaration.append(keysDeclaration);
+        
+        if (indexType.equalsIgnoreCase(COMPOSITE)) {
+            declaration.append(".buildCompositeIndex();");
+        }
+        else if (indexType.equalsIgnoreCase(MIXED)) {
+            declaration.append(".buildMixedIndex('search');");
+        }
+        else {
+            // Not a recognized type
+            logger.error("Unrecognized index type: " + indexType);
+            return "";
+        }
+        
+        return declaration.toString();
     }
     
+    /** 
+     * Builds the partial Gremlin declaration for adding property keys to an
+     * index.
+     */
+    private String buildAddKeysDeclaration(List<String> propertyKeys) {
+        StringBuilder declaration = new StringBuilder();
+        for (String key : propertyKeys) {
+            declaration.append(String.format(".addKey(m.getPropertyKey('%s'))", key));
+        }
+        
+        return declaration.toString();
+    }
+
     /** Auto-generates an index name. */
     private String generateIndexName() {
         return "index" + indexNumber++;
@@ -237,7 +274,7 @@ public class IndexDefinitionsToOrientDB {
         String capitalized = first.toUpperCase() + rest.toLowerCase();
         return capitalized;
     }
-
+    
     /** Gets a text file's content as a String. */
     private String getTextFileContent(File textFile) throws IOException {
         try (BufferedReader in = new BufferedReader(new FileReader(textFile))) {
@@ -270,39 +307,8 @@ public class IndexDefinitionsToOrientDB {
             logger.error("Expected 'indexes' key");
         }
         
-        // Handle each index
-        int count = indexes.length();
-        for (int i = 0; i < count; i++) {
-            JSONObject indexSpec = indexes.getJSONObject(i);
-            JSONArray keys = indexSpec.getJSONArray(KEYS);
-            
-            // For each key
-            int keyCount = keys.length();
-            for (int j = 0; j < keyCount; j++) {
-                JSONObject keySpec = keys.getJSONObject(j);
-                
-                // Get the property name
-                String property = keySpec.getString(NAME);
-                this.propertyNames.add(property); // tracking the global list of property names
-                
-                try {
-                    // Make the property declaration for the key
-                    String declaration = String.format("DROP PROPERTY V.%s FORCE", property);
-                    ((OrientDBConnection)dbConnection).<OrientDynaElementIterable>executeSQL(declaration);
-                } catch (OCommandExecutionException e) {
-                    // Intercept error to print debug info
-                    String stackTrace = getStackTrace(e);
-                    logger.error(String.format("Failed to drop property '%s'", property));
-                    logger.error(stackTrace);
-                    
-                    // Re-throw up the stack
-                    throw e;
-                } catch (OSchemaException e) {
-                    logger.info(String.format("IGNORING: No property with name: '%s'", property));
-                    
-                }
-            }
-        }
+        //TODO: rewrite this for TITAN
+
     }
     
     /**
@@ -319,31 +325,31 @@ public class IndexDefinitionsToOrientDB {
      */
     public Set<String> getPropertyNamesFromDB() {
         Set<String> dbPropertyNames = new HashSet<String>();
+        //TODO:  NEED TO WRITE THIS
 
-        String query = "SELECT field FROM (SELECT expand(indexDefinition) FROM (SELECT expand(indexes) FROM metadata:indexmanager))";
-        try {
-            OrientDynaElementIterable qiterable=((OrientDBConnection)dbConnection).<OrientDynaElementIterable>executeSQL(query);
-            if (qiterable != null) { // Don't know if this can happen, but just in case
-                Iterator<Object> iter = qiterable.iterator();
-                while (iter.hasNext()) {
-                    OrientVertex v = (OrientVertex) iter.next();
-                    String fieldName = (String)v.getProperty("field");
-                    dbPropertyNames.add(fieldName);
-                }
-            }
-        } catch (OCommandExecutionException e) {
-            // Intercept error to print debug info
-            e.printStackTrace();
-            // Re-throw up the stack
-            throw e;
-        }
         return dbPropertyNames;
+    }
+    
+    /** Sends a request to Rexster. */
+    private void executeRexsterRequest(String request) {
+        logger.info("Making Rexster request: " + request);
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                ((TitanDBConnection)dbConnection).executeGremlin(request);
+                logger.info("    Rexster request succeeded");
+                return;
+            } 
+            catch (StuccoDBException e) {
+                logger.error("    Rexster request failed: " + e); 
+            }
+        }
+        logger.error("    Skipping Rexster request after 3 failed attempts.");
     }
     
     public static void main(String[] args) {
         try {
             
-            IndexDefinitionsToOrientDB loader = new IndexDefinitionsToOrientDB();
+            IndexDefinitionsToTitanGremlin loader = new IndexDefinitionsToTitanGremlin();
             
             // get environment variables
             String type = System.getenv("STUCCO_DB_TYPE");
@@ -377,12 +383,6 @@ public class IndexDefinitionsToOrientDB {
             System.err.printf("Error in opening file, path or file does not exist: %s\n", e.toString());
             System.exit(-1);
         }
-        catch (OCommandExecutionException e) {
-            System.err.printf("Indexing failed");
-            System.exit(-1);
-        }
     }
-
-
 
 }

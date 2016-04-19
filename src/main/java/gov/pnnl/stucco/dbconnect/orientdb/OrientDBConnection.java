@@ -1,22 +1,22 @@
 package gov.pnnl.stucco.dbconnect.orientdb;
 
+import gov.pnnl.stucco.dbconnect.Condition;
+import gov.pnnl.stucco.dbconnect.DBConnectionBase;
+import gov.pnnl.stucco.dbconnect.DBConstraint;
+import gov.pnnl.stucco.dbconnect.StuccoDBException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,46 +24,27 @@ import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
+import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
-
-import gov.pnnl.stucco.dbconnect.Condition;
-import gov.pnnl.stucco.dbconnect.DBConnectionBase;
-import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
-import gov.pnnl.stucco.dbconnect.DBConnectionIndexerInterface;
-import gov.pnnl.stucco.dbconnect.DBConnectionTestInterface;
-import gov.pnnl.stucco.dbconnect.DBConstraint;
-import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
 public class OrientDBConnection extends DBConnectionBase {
    
     private OrientGraph graphDB = null;
     private Logger logger = null;
-    private Map<String, String> configuration = new HashMap<String,String>();
+    private Map<String, Object> configuration = new HashMap<String,Object>();
     //private Map<String, String> vertIDCache; //TODO could really split this into a simple cache class.
     //private Set<String> vertIDCacheRecentlyRead;
     private static int VERT_ID_CACHE_LIMIT = 10000;
     private static String[] HIGH_FORWARD_DEGREE_EDGE_LABELS = {"hasFlow"}; //TODO: update as needed.  Knowing these allows some queries to be optimized.
 
     
-    public OrientDBConnection(Map<String, String> configuration) {
+    public OrientDBConnection(Map<String, Object> configuration) {
         this.configuration.putAll(configuration);
         logger = LoggerFactory.getLogger(OrientDBConnection.class);
         //vertIDCache = new HashMap<String, String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
         //vertIDCacheRecentlyRead = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
 
-    }
-    
-    @Override
-    public int getVertCount(){
-        //TODO: implement
-        return 0;
-    }
-
-    @Override
-    public int getEdgeCount(){
-        //TODO: implement
-        return 0;
     }
 
     @Override
@@ -78,54 +59,6 @@ public class OrientDBConnection extends DBConnectionBase {
 
     }
 
-//    @SuppressWarnings({ "rawtypes", "unchecked" })
-//    private void updateVertProperty(String id, String key, Object val) throws OCommandExecutionException{ 
-//        String cardinality = findCardinality(id, key, val);
-//        
-//        if (key.equals("_properties")) {
-//            return;
-//        }
-//
-//        if (cardinality.equals("SET")) {
-//            // At this point, we assume it's in List form
-//            
-//            Map<String, Object> queryRetValue = getVertByID(id);
-//            if (queryRetValue == null) {
-//                // Handle how?
-//            }
-//            
-//            Object obj = convertMultiValueToList(val);
-//            List newValue;
-//            if (obj instanceof List) {
-//                newValue = (List) obj;
-//            }
-//            else {
-//                newValue = Collections.singletonList(obj);
-//            }
-//            
-//            List currentList = (List)queryRetValue.get(key);
-//
-//            if(currentList == null) {
-//                // no value existed in the DB
-//                val = newValue;
-//            } else {
-//                Set currentSet = new HashSet(currentList);
-//                for (Object currVal : newValue) {
-//                    if (!currentSet.contains(currVal)) {
-//                        currentSet.add(currVal);
-//                        currentList.add(currVal);
-//                    }
-//                }
-//                val = currentList;
-//            }
-//        }
-//
-//        String query = String.format("SELECT FROM %s",id);
-//        List<OrientVertex> verts = this.getVerticesFromQuery(query);
-//        if(!verts.isEmpty()) {
-//            verts.get(0).setProperty(key, val);
-//        }
-//    }
     private void updateVertProperty(String id, String key, Object val) throws OCommandExecutionException{ 
         updateVertexProperty(id, key, val);
     }
@@ -140,15 +73,14 @@ public class OrientDBConnection extends DBConnectionBase {
         }
     }
 
-
     /** 
      * Runs SQL query to get vertices.
      * 
-     * @throws OCommandExecutionException on bad query
+     * @throws StuccoDBException on bad query
      * 
      * @return Zero or more vertices
      * */
-    private List<OrientVertex> getVerticesFromQuery(String query) throws OCommandExecutionException {
+    private List<OrientVertex> getVerticesFromQuery(String query) {
         OrientDynaElementIterable qiterable = executeSQL(query);
         List<OrientVertex> vertexList = new ArrayList<OrientVertex>(1);
         if (qiterable != null) { // Don't know if this can happen, but just in case
@@ -159,20 +91,43 @@ public class OrientDBConnection extends DBConnectionBase {
         }
         return vertexList;
     }
+    
+    /** 
+     * Runs SQL query to get edges.
+     * 
+     * @throws StuccoDBException on bad query
+     * 
+     * @return Zero or more edges
+     * */
+    private List<OrientEdge> getEdgesFromQuery(String query) {
+        OrientDynaElementIterable qiterable = executeSQL(query);
+        List<OrientEdge> edgeList = new ArrayList<OrientEdge>(1);
+        if (qiterable != null) { // Don't know if this can happen, but just in case
+            Iterator<Object> iter = qiterable.iterator();
+            while (iter.hasNext()) {
+                edgeList.add((OrientEdge) iter.next());
+            }
+        }
+        return edgeList;
+    }
 
     /**
      *  Runs SQL query to do things like create properties, indexes, etc...
      * @param query
      * @return
      */
-    public <T> T executeSQL(String query) {
-        OCommandSQL sql = new OCommandSQL(query);
-        OCommandRequest ocr = graphDB.command(sql);
-        T obj = ocr.<T>execute();
+    <T> T executeSQL(String query) {
+        try {
+            OCommandSQL sql = new OCommandSQL(query);
+            OCommandRequest ocr = graphDB.command(sql);
+            T obj = ocr.<T>execute();
+            return obj;
+        } catch (OCommandExecutionException e)
+        {
+            throw new StuccoDBException(e);
+        }
         
-        return obj;
     }
-
     
     /** 
      * {@inheritDoc}
@@ -193,31 +148,10 @@ public class OrientDBConnection extends DBConnectionBase {
         if(vertexList.isEmpty()){
             return null;
         }
-        
-        return addPropertiesKey(vertexList).get(0);
+        Map<String,Object> propertyMap = vertexList.get(0).getProperties();
+        return propertyMap;
     }
 
-    /**
-     *TODO: (SJB) determine if we need to do this anymore?
-     * Adds the "_properties" key to the map that is copy of the original map.
-     * 
-     * @param vertexList
-     * 
-     * @return  List of a Map of properties (or an empty list if no vertices)
-     */
-    private List<Map<String, Object>> addPropertiesKey(List<OrientVertex> vertexList)
-    {
-        List<Map<String,Object>> listPropertyMap = new ArrayList<Map<String,Object>>();
-        Map<String, Object> propertyMap = null;
-        for (OrientVertex v : vertexList) {
-            propertyMap = v.getProperties();
-            Map<String,Object> existingProperties = new HashMap<String, Object>(propertyMap);
-            propertyMap.put("_properties", existingProperties);
-            listPropertyMap.add(propertyMap);
-        }
-        return listPropertyMap;
-    }
-    
     /*
     @Override
     public Map<String, Object> getVertByName(String name){
@@ -232,8 +166,10 @@ public class OrientDBConnection extends DBConnectionBase {
         }else if(vertexList.size() > 1){
             logger.warn("findVert found more than 1 matching verts for name: " + name + " so returning the first item.");
         }
+        
+        Map<String,Object> propertyMap = vertexList.get(0).getProperties();
 
-        return addPropertiesKey(vertexList).get(0);
+        return propertyMap;
     }
     */
 
@@ -287,17 +223,13 @@ public class OrientDBConnection extends DBConnectionBase {
     @Override
     public String addVertex(Map<String, Object> properties) {
         String name = (String)properties.get("name");
-        String id = (String)properties.get("_id");
         if(name == null || name.isEmpty()){
-            name = id;
-            properties.put("name", name);
+            String msg = String.format("cannot add vertex with missing or invalid vertID");
+            throw new IllegalArgumentException(msg);
         }
         
         //convert any multi-valued properties to a set form.
         convertAllMultiValuesToSet(properties);
-        properties.remove("_properties");
-
-        properties.remove("_id"); //Some graphDB servers will ignore this ID, some won't.  Just remove them so it's consistent.
         OrientVertex v = graphDB.addVertex("class:V", properties);
         graphDB.commit();
         return v.getId().toString();
@@ -366,18 +298,6 @@ public class OrientDBConnection extends DBConnectionBase {
             String msg = String.format("cannot add edge with missing or invalid vertID, either %s or %s", outVertID, inVertID);
             throw new IllegalArgumentException(msg);
         }
-    }
-    
-    @Override
-    public List<Map<String, Object>> getOutEdges(String outVertID){
-        //TODO: implement
-        return null;
-    }
-    
-    @Override
-    public List<Map<String, Object>> getInEdges(String inVertID){
-        //TODO: implement
-        return null;
     }
 
     @Override
@@ -586,7 +506,7 @@ public class OrientDBConnection extends DBConnectionBase {
 
         try {
             // extract configuration for the DB of interest
-            String dbName = configuration.get("graph-name");
+            String dbName = (String)configuration.get("graph-name");
             graphDB = new OrientGraph(dbName);
         } catch (Exception e) {
             logger.warn(e.getLocalizedMessage());
@@ -627,10 +547,14 @@ public class OrientDBConnection extends DBConnectionBase {
     }
 
     @Override
-    public void buildIndex(String indexConfig) throws IOException {
+    public void buildIndex(String indexConfig) {
         IndexDefinitionsToOrientDB loader = new IndexDefinitionsToOrientDB();
         loader.setDBConnection(this);
-        loader.parse(new File(indexConfig));
+        try {
+            loader.parse(new File(indexConfig));
+        } catch (IOException e) {
+            throw new StuccoDBException(e);
+        }
         
     }
 
@@ -651,5 +575,76 @@ public class OrientDBConnection extends DBConnectionBase {
         return graphDB;
     }
 
+    @Override
+    public long getVertCount() {
+        long count = this.graphDB.countVertices();
+        return count;
+    }
+
+    @Override
+    public long getEdgeCount() {
+        long count = this.graphDB.countEdges();
+        return count;
+    }
+
+    @Override
+    public List<Map<String, Object>> getOutEdges(String outVertID) {
+        if(outVertID == null || outVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        
+        Object query_ret = getVertByID(outVertID);
+        if(query_ret == null){
+            logger.warn("getOutVertIDs could not find inVertID:" + outVertID);
+            throw new IllegalArgumentException("missing or invalid outVertID");
+        }
+        
+        String query = String.format("SELECT expand(outE()) FROM %s", outVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        for(OrientEdge item : results){
+            Map<String,Object> edgeProperties = new HashMap<String, Object>();
+            String relation = item.getLabel();
+            String inVertID = item.getInVertex().getIdentity().toString();
+            
+            edgeProperties.put("inVertID", inVertID);
+            edgeProperties.put("outVertID", outVertID);
+            edgeProperties.put("relation", relation);
+            edgePropertyList.add(edgeProperties);
+        }
+        
+        return edgePropertyList;
+    }
+
+    @Override
+    public List<Map<String, Object>> getInEdges(String inVertID) {
+            if(inVertID == null || inVertID.equals("") ){
+                throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+            }
+            
+            Object query_ret = getVertByID(inVertID);
+            if(query_ret == null){
+                logger.warn("getInVertIDs could not find inVertID:" + inVertID);
+                throw new IllegalArgumentException("missing or invalid inVertID");
+            }
+            
+            String query = String.format("SELECT expand(inE()) FROM %s", inVertID); 
+            List<OrientEdge>results = getEdgesFromQuery(query);
+
+            List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+            for(OrientEdge item : results){
+                Map<String,Object> edgeProperties = new HashMap<String, Object>();
+                String relation = item.getLabel();
+                String outVertID = item.getOutVertex().getIdentity().toString();
+                
+                edgeProperties.put("inVertID", inVertID);
+                edgeProperties.put("outVertID", outVertID);
+                edgeProperties.put("relation", relation);
+                edgePropertyList.add(edgeProperties);
+            }
+            
+            return edgePropertyList;
+        }
 
 }

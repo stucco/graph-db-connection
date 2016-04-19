@@ -19,6 +19,22 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.tinkerpop.rexster</groupId>
+			<artifactId>rexster-protocol</artifactId>
+			<version>2.5.0</version>
+			<exclusions> <!-- Rexter includes some redundant jars, which now floods the logs with 
+					warnings... -->
+				<exclusion>
+					<groupId>javax.xml.stream</groupId>
+					<artifactId>stax-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>commons-beanutils</groupId>
+					<artifactId>commons-beanutils-core</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
 			<groupId>com.tinkerpop.blueprints</groupId>
 			<artifactId>blueprints-core</artifactId>
 			<version>2.6.0</version>
@@ -70,21 +86,42 @@
 					<compilerArgument></compilerArgument>
 				</configuration>
 			</plugin>
+			<!-- -->
+			<plugin>
+				<groupId>com.jolira</groupId>
+				<artifactId>onejar-maven-plugin</artifactId>
+				<version>1.4.4</version>
+				<executions>
+					<execution>
+						<id>build-first</id>
+						<configuration>
+							<mainClass>gov.pnnl.stucco.dbconnect.IndexDefinitionsToDB</mainClass>
+							<attachToBuild>true</attachToBuild>
+							<classifier>onejar</classifier>
+							<filename>DBConnect.jar</filename>
+						</configuration>
+						<goals>
+							<goal>one-jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			 <!-- -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.19</version>
 				<configuration>
-					<!--
-					<testSourceDirectory>${project.basedir}/src/test/java/</testSourceDirectory>
-					<testClassesDirectory>${project.build.directory}/test-classes/</testClassesDirectory>
-					<includes>
-						<include>**/*WebDriver.java</include>
-						<include>**/*Tests.java</include>
-					</includes>
-					-->
+					<environmentVariables>
+						<STUCCO_DB_TYPE>INMEMORY</STUCCO_DB_TYPE>
+						<STUCCO_DB_CONFIG>config/inmemory.yml</STUCCO_DB_CONFIG>
+						<STUCCO_DB_INDEX_CONFIG>config/inmemory.yml</STUCCO_DB_INDEX_CONFIG>
+					</environmentVariables>
 					<excludes>
-						<exclude>**/InMemoryDBConnection*.java</exclude>
+						<!-- <exclude>**/DBConnectionTest*.java</exclude>  -->
+						<exclude>**/InMemoryDBConnectionTest.java</exclude>
+						<exclude>**/DBConnectionIndexerTest.java</exclude>
+						<exclude>**/OrientDBIndexerTest*.java</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

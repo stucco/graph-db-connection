@@ -5,7 +5,7 @@ import gov.pnnl.stucco.dbconnect.DBConstraintBase;
 
 /**
  * This class is the concrete implementation of the conditional for
- * in-memory comparison types.
+ * OrientDB comparison types.
  *
  */
 public class OrientDBConstraint extends DBConstraintBase {
