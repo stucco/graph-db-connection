@@ -5,7 +5,6 @@ package gov.pnnl.stucco.dbconnect;
  */
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnectionFactory;
-import gov.pnnl.stucco.dbconnect.titan.TitanDBConnectionFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -58,7 +57,7 @@ public abstract class DBConnectionFactory {
             case ORIENTDB:
                 return new OrientDBConnectionFactory();
             case TITAN:
-                return new TitanDBConnectionFactory();
+                break;
             default:
                 break;
         }
