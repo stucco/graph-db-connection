@@ -101,6 +101,33 @@ public interface DBConnectionAlignment {
      * @return list of vertex IDs
      */
     public List<String>getVertIDsByRelation(String v1, String relation);
+    
+    /**
+     * Identify the vertices where their relationship type and direction enter the specified vertex
+     * @param v1 vertex end point
+     * @param relation the relationship type of the edge
+     * @param contraints on the matching vertIDs
+     * @return list of vertex IDs
+     */
+    public List<String>getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
+
+    /**
+     * Identify the vertices where their relationship type and direction leave the specified vertex
+     * @param v1 vertex starting point
+     * @param relation the relationship type of the edge
+     * @param contraints on the matching vertIDs
+     * @return list of vertex IDs
+     */
+    public List<String>getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
+
+    /**
+     * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
+     * @param v1 - vertex ID
+     * @param relation - the relationship type of the edge
+     * @param contraints on the matching vertIDs
+     * @return list of vertex IDs
+     */
+    public List<String>getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
     /**
      * Given two vertices and a relation, remove the edge
      * @param v1 - vertex ID

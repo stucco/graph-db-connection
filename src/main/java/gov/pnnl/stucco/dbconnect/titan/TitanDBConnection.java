@@ -260,18 +260,7 @@ public class TitanDBConnection extends DBConnectionBase {
             return null;
 
         Map<String, Object> param = new HashMap<String, Object>();
-        String query = "g.V";
-        for(int i=0; i<constraints.size(); i++){
-            DBConstraint c = constraints.get(i);
-            String cond = c.condString(c.getCond());
-            String key = c.getProp().toUpperCase()+i;
-            Object value = c.getVal();
-            param.put(key, value);
-            
-            query += ".has(\"" + c.getProp() + "\"," + cond + "," + key + ")";
-        }
-        //query += ".vertices().toList();";
-        query += ";";
+        String query = "g.V" + buildQueryConstraintGremlin(constraints, param);
         Object query_ret = null;
         query_ret = executeGremlin(query, param);
         List<Map<String,Object>> query_ret_list = (List<Map<String,Object>>)query_ret;
@@ -285,6 +274,22 @@ public class TitanDBConnection extends DBConnectionBase {
         }
         
         return vertIDs;
+    }
+    
+    /** Builds the constraints portions of the query. */
+    private String buildQueryConstraintGremlin(List<DBConstraint> constraints, Map<String, Object> param) {
+        String query = "";
+        for(int i=0; i<constraints.size(); i++){
+            DBConstraint c = constraints.get(i);
+            String cond = c.condString(c.getCond());
+            String key = c.getProp().toUpperCase()+i;
+            Object value = c.getVal();
+            param.put(key, value);
+            
+            query += ".has(\"" + c.getProp() + "\"," + cond + "," + key + ")";
+        }
+        query += ";";
+        return query;
     }
 
     @Override
@@ -751,6 +756,92 @@ public class TitanDBConnection extends DBConnectionBase {
         
 
         return edgePropertyList;
+    }
+    
+    
+
+    @Override
+    public List<String> getInVertIDsByRelation(String outVertID, String relation, List<DBConstraint> constraints) {
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(outVertID == null || outVertID.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        
+        Object query_ret = getVertByID(outVertID);
+        if(query_ret == null){
+            logger.warn("getInVertIDsByRelation could not find outVertID:" + outVertID);
+            throw new IllegalArgumentException("missing or invalid outVertID");
+        }
+        
+        Map<String, Object> param = new HashMap<String, Object>();
+        param.put("ID", Long.parseLong(outVertID));
+        param.put("LABEL", relation);
+        Object rtnValue = null;
+
+        String query = "g.v(ID).out(LABEL)"+ buildQueryConstraintGremlin(constraints, param);
+        rtnValue = executeGremlin(query, param);
+        
+        List<String> relatedIDs = extractIDList((List<Map<String,Object>>)rtnValue);
+        
+        return relatedIDs;
+    }
+
+    @Override
+    public List<String> getOutVertIDsByRelation(String inVertID, String relation, List<DBConstraint> constraints) {
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(inVertID == null || inVertID.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+        }
+        
+        Object query_ret = getVertByID(inVertID);
+        if(query_ret == null){
+            logger.warn("getOutVertIDsByRelation could not find inVertID:" + inVertID);
+            throw new IllegalArgumentException("missing or invalid inVertID");
+        }
+        
+        Map<String, Object> param = new HashMap<String, Object>();
+        param.put("ID", Long.parseLong(inVertID));
+        param.put("LABEL", relation);
+        Object rtnValue = null;
+
+        String query = "g.v(ID).in(LABEL)"+ buildQueryConstraintGremlin(constraints, param);
+        rtnValue = executeGremlin(query, param);
+        
+        List<String> relatedIDs = extractIDList((List<Map<String,Object>>)rtnValue);
+        
+        return relatedIDs;
+    }
+
+    @Override
+    public List<String> getVertIDsByRelation(String vertID, String relation,  List<DBConstraint> constraints) {
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(vertID == null || vertID.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid vertID");
+        }
+        
+        Object query_ret = getVertByID(vertID);
+        if(query_ret == null){
+            logger.warn("getVertIDsByRelation could not find vertID:" + vertID);
+            throw new IllegalArgumentException("missing or invalid vertID");
+        }
+        
+        Map<String, Object> param = new HashMap<String, Object>();
+        param.put("ID", Long.parseLong(vertID));
+        param.put("LABEL", relation);
+        Object rtnValue = null;
+
+        String query = "g.v(ID).both(LABEL)"+ buildQueryConstraintGremlin(constraints, param);
+        rtnValue = executeGremlin(query, param);
+        
+        List<String> relatedIDs = extractIDList((List<Map<String,Object>>)rtnValue);
+        
+        return relatedIDs;
     }
 
 }

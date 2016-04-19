@@ -204,8 +204,10 @@ public class InMemoryDBConnection extends DBConnectionBase{
         List<String> relatedIDs = new LinkedList<String>();
         for(Map<String, Object> currEdge : edges.values()){
             if( ((String)currEdge.get("relation")).equals(relation) ){
-                if( ((String)currEdge.get("inVertID")).equals(vertID) || ((String)currEdge.get("outVertID")).equals(vertID)){
+                if( ((String)currEdge.get("inVertID")).equals(vertID) ){
                     relatedIDs.add( (String)currEdge.get("outVertID") ); //TODO: check valid state here?
+                }else if( ((String)currEdge.get("outVertID")).equals(vertID) ){
+                    relatedIDs.add( (String)currEdge.get("inVertID") ); //TODO: check valid state here?
                 }
             }
         }
@@ -582,6 +584,54 @@ public class InMemoryDBConnection extends DBConnectionBase{
     protected void setPropertyInDB(String id, String key, Object newValue) {
         
         vertices.get(id).put(key, newValue);
+    }
+
+    @Override
+    public List<String> getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints) {
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
+        }
+        //TODO: consider faster implementations
+        Set<String> constraintIDs = new HashSet<String>(getVertIDsByConstraints(constraints));
+        Set<String> neighborIDs = new HashSet<String>(getInVertIDsByRelation(v1, relation));
+        constraintIDs.retainAll(neighborIDs);
+        List<String> ret = new LinkedList<String>(constraintIDs);
+        return ret;
+    }
+
+    @Override
+    public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints) {
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
+        }
+        //TODO: consider faster implementations
+        Set<String> constraintIDs = new HashSet<String>(getVertIDsByConstraints(constraints));
+        Set<String> neighborIDs = new HashSet<String>(getOutVertIDsByRelation(v1, relation));
+        constraintIDs.retainAll(neighborIDs);
+        List<String> ret = new LinkedList<String>(constraintIDs);
+        return ret;
+    }
+
+    @Override
+    public List<String> getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints) {
+        if(relation == null || relation.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
+        }
+        if(v1 == null || v1.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid Vertex ID");
+        }
+        //TODO: consider faster implementations
+        Set<String> constraintIDs = new HashSet<String>(getVertIDsByConstraints(constraints));
+        Set<String> neighborIDs = new HashSet<String>(getVertIDsByRelation(v1, relation));
+        constraintIDs.retainAll(neighborIDs);
+        List<String> ret = new LinkedList<String>(constraintIDs);
+        return ret;
     }
 
 }

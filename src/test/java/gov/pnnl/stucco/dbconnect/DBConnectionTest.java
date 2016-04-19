@@ -1,6 +1,7 @@
 package gov.pnnl.stucco.dbconnect;
 
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -617,6 +618,114 @@ extends TestCase
     }
 
 
+    /**
+     * get the vertex's property map using the vertex's canonical name
+     * @param vertName
+     * @return property map
+     */
+    private List<Map<String,Object>> getVertsByName(String vertName) {
+        List<Map<String,Object>> retVal = new LinkedList<Map<String,Object>>();
+        List<String> ids = getVertIDsByName(vertName);
+        if(ids == null)
+            return null;
+        for(String currID : ids){
+            Map<String, Object> currVert = conn.getVertByID(currID);
+            if(currVert == null)
+                throw new IllegalStateException("bad state: found vert id with no content.");
+            retVal.add(currVert);
+        }
+        return retVal;
+    }
+
+    private Map<String,Object> getVertByName(String vertName){
+        return getVertsByName(vertName).get(0);
+    }
+
+    /**
+     * get the vertexID using the canonical name
+     * @param vertName
+     * @return ID
+     */
+    private List<String> getVertIDsByName(String vertName){
+        if(vertName == null || vertName == "")
+            return null;
+        List<DBConstraint> constraints = new ArrayList<DBConstraint>(1);
+        DBConstraint c1 = conn.getConstraint("name", Condition.eq, vertName );
+        constraints.add( c1 );
+        return conn.getVertIDsByConstraints(constraints);
+    }
+    
+    private String getVertIDByName(String vertName){
+        return getVertIDsByName(vertName).get(0);
+    }
+    
+    public void testRelationConstraints()
+    {
+        Map<String, Object> vert;
+        List<DBConstraint> constraints;
+        List<String> ids;
+        List<String> expectedIds;
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "center");
+        String id_center = conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "aaa_5");
+        vert.put("aaa", 5);
+        String id_aaa_5 = conn.addVertex(vert);
+        conn.addEdge(id_aaa_5, id_center, "r");
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "aaa_6");
+        vert.put("aaa", 6);
+        String id_aaa_6 = conn.addVertex(vert);
+        conn.addEdge(id_aaa_6, id_center, "r");
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "aaa_7");
+        vert.put("aaa", 7);
+        String id_aaa_7 = conn.addVertex(vert);
+        conn.addEdge(id_aaa_7, id_center, "r");
+
+        DBConstraint c1 = conn.getConstraint("aaa", Condition.eq, new Integer(5) );
+        constraints = new LinkedList<DBConstraint>();
+        constraints.add(c1);
+
+        ids = conn.getInVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(1, ids.size());
+        assertTrue(ids.contains(getVertIDByName("aaa_5")));
+        ids = conn.getOutVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(0, ids.size());
+
+        List<DBConstraint> emptyConstraints = new LinkedList<DBConstraint>();
+        ids = conn.getOutVertIDsByRelation(id_aaa_5, "r", emptyConstraints);
+        assertEquals(1, ids.size());
+        assertEquals(id_center, ids.get(0));
+        ids = conn.getInVertIDsByRelation(id_aaa_5, "r", emptyConstraints);
+        assertEquals(0, ids.size());
+
+        ids = conn.getVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(1, ids.size());
+        assertEquals(getVertIDByName("aaa_5"), ids.get(0));
+
+
+        c1 = conn.getConstraint("aaa", Condition.neq, new Integer(5) );
+        constraints = new LinkedList<DBConstraint>();
+        constraints.add(c1);
+
+        ids = conn.getInVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains(id_aaa_6));
+        assertTrue(ids.contains(id_aaa_7));
+        ids = conn.getOutVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(0, ids.size());
+
+        ids = conn.getVertIDsByRelation(id_center, "r", constraints);
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains(id_aaa_6));
+        assertTrue(ids.contains(id_aaa_7));
+    }
 }
 
 
