@@ -102,7 +102,7 @@ public interface DBConnectionAlignment {
      * @return list of vertex IDs
      */
     public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints);
-    
+
     /**
      * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
      * and where the found vertices match the following constraints

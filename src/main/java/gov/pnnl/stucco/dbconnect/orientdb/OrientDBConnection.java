@@ -237,25 +237,10 @@ public class OrientDBConnection extends DBConnectionBase {
 
     @Override
     public List<String> getVertIDsByConstraints(List<DBConstraint> constraints) {
-        if(constraints == null || constraints.size() == 0)
-            return null;
-
-        String query = String.format("SELECT FROM V where ");
-        for(int i=0; i<constraints.size(); i++){
-            DBConstraint c = constraints.get(i);
-            String cond = c.condString(c.getCond());
-            String key = c.getProp();
-            Object value = c.getVal();
-
-            if(i > 0 ) {
-                query += " AND ";
-            }
-            if(value instanceof String) {
-                query += String.format(" %s %s '%s' ", key, cond, value); 
-            } else {
-                query += String.format(" %s %s %s ", key, cond, value);
-            }
-        }
+        if(constraints == null)
+            throw new NullPointerException();
+        
+        String query = "SELECT * FROM V " + buildQueryConstraintSql(constraints);
         
         List<OrientVertex> verts = this.getVerticesFromQuery(query);
         List<String> vertIDs = new ArrayList<String>();
@@ -264,6 +249,40 @@ public class OrientDBConnection extends DBConnectionBase {
         }
         
         return vertIDs;
+    }
+    
+    /** Wraps a query within a WHERE query adding constraints on the result. */
+    private String wrapQueryWithWhereClause(String sqlToWrap, List<DBConstraint> constraints) {
+        if (constraints.isEmpty()) {
+            return sqlToWrap;
+        }
+        
+        String whereClause = buildQueryConstraintSql(constraints);
+        String query = String.format("SELECT * FROM (%s) %s", sqlToWrap, whereClause);
+        return query;
+    }
+    
+    /** Builds the WHERE clause of a constraints query. */
+    private String buildQueryConstraintSql(List<DBConstraint> constraints) {
+        StringBuilder builder = new StringBuilder();
+        for(int i=0; i<constraints.size(); i++){
+            DBConstraint c = constraints.get(i);
+            String cond = c.condString(c.getCond());
+            String key = c.getProp();
+            Object value = c.getVal();
+
+            if(i == 0 ) {
+                builder.append(" WHERE ");
+            } else {
+                builder.append(" AND ");
+            }
+            if(value instanceof String) {
+                builder.append(String.format(" %s %s '%s' ", key, cond, value)); 
+            } else {
+                builder.append(String.format(" %s %s %s ", key, cond, value));
+            }
+        }
+        return builder.toString();
     }
 
     @Override
@@ -302,7 +321,6 @@ public class OrientDBConnection extends DBConnectionBase {
 
     @Override
     public List<String> getInVertIDsByRelation(String outVertID, String relation) {
-        
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invlid relation");
         }
@@ -367,14 +385,13 @@ public class OrientDBConnection extends DBConnectionBase {
         if(vertID == null || vertID.equals("")) {
             throw new IllegalArgumentException("cannot get edge with missing or invalid vertID");
         }
-        
+
         Object query_ret = getVertByID(vertID);
         if(query_ret == null){
             logger.warn("getVertIDsByRelation could not find vertID:" + vertID);
             throw new IllegalArgumentException("missing or invalid vertID");
         }
 
-        
         String query = String.format("SELECT expand(both('%s')) FROM %s",relation, vertID); 
         List<OrientVertex>results = getVerticesFromQuery(query);
 
@@ -383,45 +400,92 @@ public class OrientDBConnection extends DBConnectionBase {
             String idValue = item.getId().toString();
             relatedIDs.add(idValue);
 //            String idvalue = item.getProperties().get("@rid").toString();
-            
+
         }
         return relatedIDs;
     }
 
     @Override
-    public List<String> getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+    public List<String> getInVertIDsByRelation(String outVertID, String relation, List<DBConstraint> constraints) {
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(v1 == null || v1.equals("")){
-            throw new IllegalArgumentException("cannot get edge with missing Vertex ID");
+        if(outVertID == null || outVertID.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
         }
-        //TODO: implement
-        return null;
+
+        Object query_ret = getVertByID(outVertID);
+        if(query_ret == null){
+            logger.warn("getInVertIDsByRelation could not find outVertID:" + outVertID);
+            throw new IllegalArgumentException("missing or invalid outVertID");
+        }
+
+        String relationQuery = String.format("SELECT expand(out('%s')) FROM %s",relation, outVertID);
+        String overallQuery = wrapQueryWithWhereClause(relationQuery, constraints);
+        List<OrientVertex>results = getVerticesFromQuery(overallQuery);
+
+        List<String> relatedIDs = new ArrayList<String>();
+        for(OrientVertex item : results){
+            String idValue = item.getId().toString();
+            relatedIDs.add(idValue);
+//            String idvalue = item.getProperties().get("@rid").toString();
+
+        }
+        return relatedIDs;
     }
 
     @Override
-    public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+    public List<String> getOutVertIDsByRelation(String inVertID, String relation, List<DBConstraint> constraints) {
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(v1 == null || v1.equals("")){
-            throw new IllegalArgumentException("cannot get edge with missing Vertex ID");
+        if(inVertID == null || inVertID.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
         }
-        //TODO: implement
-        return null;
+
+        Object query_ret = getVertByID(inVertID);
+        if(query_ret == null){
+            logger.warn("getOutVertIDsByRelation could not find inVertID:" + inVertID);
+            throw new IllegalArgumentException("missing or invalid inVertID");
+        }
+
+        String relationQuery = String.format("SELECT expand(in('%s')) FROM %s",relation, inVertID);
+        String overallQuery = wrapQueryWithWhereClause(relationQuery, constraints);
+        List<OrientVertex>results = getVerticesFromQuery(overallQuery);
+
+        List<String> relatedIDs = new ArrayList<String>();
+        for(OrientVertex item : results){
+            String idValue = item.getId().toString();
+            relatedIDs.add(idValue);
+        }
+        return relatedIDs;
     }
 
     @Override
-    public List<String> getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
+    public List<String> getVertIDsByRelation(String vertID, String relation, List<DBConstraint> constraints) {
         if(relation == null || relation.equals("") ){
             throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
         }
-        if(v1 == null || v1.equals("")){
-            throw new IllegalArgumentException("cannot get edge with missing Vertex ID");
+        if(vertID == null || vertID.equals("")){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid vertID");
         }
-        //TODO: implement
-        return null;
+
+        Object query_ret = getVertByID(vertID);
+        if(query_ret == null){
+            logger.warn("getVertIDsByRelation could not find vertID:" + vertID);
+            throw new IllegalArgumentException("missing or invalid vertID");
+        }
+
+        String relationQuery = String.format("SELECT expand(both('%s')) FROM %s",relation, vertID);
+        String overallQuery = wrapQueryWithWhereClause(relationQuery, constraints);
+        List<OrientVertex>results = getVerticesFromQuery(overallQuery);
+
+        List<String> relatedIDs = new ArrayList<String>();
+        for(OrientVertex item : results){
+            String idValue = item.getId().toString();
+            relatedIDs.add(idValue);
+        }
+        return relatedIDs;
     }
 
     /*
@@ -619,32 +683,31 @@ public class OrientDBConnection extends DBConnectionBase {
 
     @Override
     public List<Map<String, Object>> getInEdges(String inVertID) {
-            if(inVertID == null || inVertID.equals("") ){
-                throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
-            }
-            
-            Object query_ret = getVertByID(inVertID);
-            if(query_ret == null){
-                logger.warn("getInVertIDs could not find inVertID:" + inVertID);
-                throw new IllegalArgumentException("missing or invalid inVertID");
-            }
-            
-            String query = String.format("SELECT expand(inE()) FROM %s", inVertID); 
-            List<OrientEdge>results = getEdgesFromQuery(query);
-
-            List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
-            for(OrientEdge item : results){
-                Map<String,Object> edgeProperties = new HashMap<String, Object>();
-                String relation = item.getLabel();
-                String outVertID = item.getOutVertex().getIdentity().toString();
-                
-                edgeProperties.put("inVertID", inVertID);
-                edgeProperties.put("outVertID", outVertID);
-                edgeProperties.put("relation", relation);
-                edgePropertyList.add(edgeProperties);
-            }
-            
-            return edgePropertyList;
+        if(inVertID == null || inVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
         }
 
+        Object query_ret = getVertByID(inVertID);
+        if(query_ret == null){
+            logger.warn("getInVertIDs could not find inVertID:" + inVertID);
+            throw new IllegalArgumentException("missing or invalid inVertID");
+        }
+
+        String query = String.format("SELECT expand(inE()) FROM %s", inVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        for(OrientEdge item : results){
+            Map<String,Object> edgeProperties = new HashMap<String, Object>();
+            String relation = item.getLabel();
+            String outVertID = item.getOutVertex().getIdentity().toString();
+
+            edgeProperties.put("inVertID", inVertID);
+            edgeProperties.put("outVertID", outVertID);
+            edgeProperties.put("relation", relation);
+            edgePropertyList.add(edgeProperties);
+        }
+
+        return edgePropertyList;
+    }
 }
