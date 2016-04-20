@@ -134,6 +134,13 @@ public interface DBConnectionAlignment {
      * @param id - vertex ID
      */
     public void removeVertByID(String id);
+    
+    /**
+     * Replaces current vertex's property map with a different one
+     * @param id - vertex that will be changed
+     * @param properties - property map with different contents, complete replacement of current content
+     */
+    public void updateVertex(String id, Map<String, Object> properties);
 
     /**
      * Close the DB and commit any transactions, for certain system it may be a NO-OP
