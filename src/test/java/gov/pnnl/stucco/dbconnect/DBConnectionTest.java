@@ -364,19 +364,17 @@ extends TestCase
         assertEquals(1, conn.getEdgeCountByRelation(id2, id, "hasIP"));
         assertEquals(0, conn.getEdgeCountByRelation(id, id2, "hasIP"));
     }
-
+    
     /**
      * creates a small set of vertices, searches this set by constraints on properties
      */
     public void testConstraints()
     {
-        //		InMemoryDBConnection conn = new InMemoryDBConnection();
         Map<String, Object> vert;
         List<DBConstraint> constraints;
-        String id;
         List<String> ids;
         List<String> expectedIds;
-
+        
         vert = new HashMap<String, Object>();
         vert.put("name", "aaa_5");
         vert.put("aaa", 5);
@@ -397,224 +395,187 @@ extends TestCase
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         assertEquals(1, ids.size());
-        assertTrue(ids.contains(conn.getVertIDByName("aaa_5")));
-        //System.out.println("Found " + ids.size() + " matching verts with aaa == 5");
+        assertTrue(ids.contains(getVertIDByName("aaa_5")));
 
         c1 = conn.getConstraint("aaa", Condition.neq, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
+        expectedIds.add(getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_7"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with aaa != 5");
 
         c1 = conn.getConstraint("aaa", Condition.gt, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
+        expectedIds.add(getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_7"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with aaa > 5");
 
         c1 = conn.getConstraint("aaa", Condition.gte, new Integer(5) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_5"));
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
+        expectedIds.add(getVertIDByName("aaa_5"));
+        expectedIds.add(getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_7"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(3, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with aaa >= 5");
 
         c1 = conn.getConstraint("aaa", Condition.lt, new Integer(6) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
-        assertTrue(ids.contains(conn.getVertIDByName("aaa_5")));
+        assertTrue(ids.contains(getVertIDByName("aaa_5")));
         assertEquals(1, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with aaa < 6");
 
         c1 = conn.getConstraint("aaa", Condition.lte, new Integer(6) );
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_5"));
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
+        expectedIds.add(getVertIDByName("aaa_5"));
+        expectedIds.add(getVertIDByName("aaa_6"));
         assertTrue(ids.containsAll(expectedIds));
         assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with aaa <= 6");
 
-        // WAITING FOR RESOLUTION ON THE TEST BELOW
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_4_5_6");
-//        vert.put("bbb", (new int[] {4,5,6}) );
-//        String vID = conn.addVertex(vert);
-//        Map<String, Object> properties = conn.getVertByID(vID);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_Integer_4_5_6");
-//        vert.put("bbb", (new Integer[] {new Integer(4), new Integer(5), new Integer(6)}) );
-//        vID = conn.addVertex(vert);
-//        properties = conn.getVertByID(vID);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_7_8_9");
-//        vert.put("bbb", (new int[] {7,8,9}) );
-//        conn.addVertex(vert);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_5_6_7_8");
-//        vert.put("bbb", (new int[] {5,6,7,8}) );
-//        conn.addVertex(vert);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_asdf");
-//        vert.put("bbb", "asdf" );
-//        conn.addVertex(vert);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_asdf4.222");
-//        vert.put("bbb", "asdf4.222" );
-//        conn.addVertex(vert);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_55");
-//        vert.put("bbb", 55 );
-//        conn.addVertex(vert);
-//
-//        vert = new HashMap<String, Object>();
-//        vert.put("name", "bbb_101_102_103");
-//        vert.put("bbb", (new double[] {101, 102, 103.0}) );
-//        conn.addVertex(vert);
+        vert = new HashMap<String, Object>();
+        vert.put("name", "bbb_4_5_6");
+        HashSet temp3 = new HashSet();
+        temp3.add(4);
+        temp3.add(5);
+        temp3.add(6);
+        vert.put("bbb", temp3 );
+        String vID = conn.addVertex(vert);
 
-        //=================================================================
-        //COMMENTING OUT UNTIL WE KNOW HOW THIS IS REALLY SUPPOSE TO WORK
-        // FOR IN OR NOTIN
-        //=================================================================
-/*
-        c1 = conn.getConstraint("bbb", Condition.in, 4);
+        vert = new HashMap<String, Object>();
+        vert.put("name", "bbb_Integer_4_5_6");
+        Integer[] temp2 = new Integer[] {new Integer(4), new Integer(5), new Integer(6)};
+        vert.put("bbb", new HashSet( Arrays.asList(temp2) ) );
+        vID = conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "bbb_7_8_9");
+        vert.put("bbb", (new int[] {7,8,9}) );
+        conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "bbb_5_6_7_8");
+        vert.put("bbb", (new int[] {5,6,7,8}) );
+        conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "ccc_asdf");
+        vert.put("ccc", "asdf" );
+        conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "ccc_asdf4.222");
+        vert.put("ccc", "asdf4.222" );
+        conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "bbb_55");
+        vert.put("bbb", new Integer[] {55} );
+        conn.addVertex(vert);
+
+        vert = new HashMap<String, Object>();
+        vert.put("name", "bbb_101_102_103");
+        //vert.put("bbb", (new double[] {101.0, 102.0, 103.0}) );
+        //TODO: above should work, but set conversion not added yet, see convertMultiValueToSet in DBConnectionBase.java
+        Double[] temp = new Double[] {101.0, 102.0, 103.0};
+        vert.put("bbb", new HashSet( Arrays.asList(temp) ) );
+        conn.addVertex(vert);
+
+        c1 = conn.getConstraint("bbb", Condition.contains, 4);
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_4_5_6"));
-        expectedIds.add(conn.getVertIDByName("bbb_Integer_4_5_6"));
+        expectedIds.add(getVertIDByName("bbb_4_5_6"));
+        expectedIds.add(getVertIDByName("bbb_Integer_4_5_6"));
+        assertTrue(ids.containsAll(expectedIds));
+        assertEquals(2, ids.size());
+        
+// ######
+// THESE CONSTRAINTS WORK DIFFERENTLY BETWEEN IN-MEMORY AND ORIENTDB
+// 
+//        c1 = conn.getConstraint("bbb", Condition.contains, new Integer(4));
+//        constraints = new LinkedList<DBConstraint>();
+//        constraints.add(c1);
+//        ids = conn.getVertIDsByConstraints(constraints);
+//        expectedIds = new LinkedList<String>();
+//        expectedIds.add(getVertIDByName("bbb_4_5_6"));
+//        expectedIds.add(getVertIDByName("bbb_Integer_4_5_6"));
 //        assertTrue(ids.containsAll(expectedIds));
 //        assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 4 in bbb");
-
-        c1 = conn.getConstraint("bbb", Condition.in, new Integer(4));
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
-        expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_4_5_6"));
-        expectedIds.add(conn.getVertIDByName("bbb_Integer_4_5_6"));
-//        assertTrue(ids.containsAll(expectedIds));
-//        assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with (Integer)4 in bbb");
-
-        c1 = conn.getConstraint("bbb", Condition.in, 4.0);
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
+//
+//        c1 = conn.getConstraint("bbb", Condition.contains, 4.0);
+//        constraints = new LinkedList<DBConstraint>();
+//        constraints.add(c1);
+//        ids = conn.getVertIDsByConstraints(constraints);
 //        assertEquals(0, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 4.0 in bbb");
 
-        c1 = conn.getConstraint("bbb", Condition.in, 4.2);
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
+        // TITAN cannot compare a non-integer value into an integer field
+//        c1 = conn.getConstraint("bbb", Condition.contains, 4.2);
+//        constraints = new LinkedList<DBConstraint>();
+//        constraints.add(c1);
+//        ids = conn.getVertIDsByConstraints(constraints);
 //        assertEquals(0, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 4.2 in bbb");
 
-        c1 = conn.getConstraint("bbb", Condition.notin, 4);
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
-        expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("aaa_5"));
-        expectedIds.add(conn.getVertIDByName("aaa_6"));
-        expectedIds.add(conn.getVertIDByName("aaa_7"));
-        expectedIds.add(conn.getVertIDByName("bbb_7_8_9"));
-        expectedIds.add(conn.getVertIDByName("bbb_5_6_7_8"));
-        expectedIds.add(conn.getVertIDByName("bbb_asdf"));
-        expectedIds.add(conn.getVertIDByName("bbb_asdf4.222"));
-        expectedIds.add(conn.getVertIDByName("bbb_55"));
-        expectedIds.add(conn.getVertIDByName("bbb_101_102_103"));
-//        assertTrue(ids.containsAll(expectedIds));
-//        assertEquals(9, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts without 4 in bbb");
-
-        c1 = conn.getConstraint("bbb", Condition.in, 5);
-        DBConstraint c2 = conn.getConstraint("bbb", Condition.in, 7);
+        c1 = conn.getConstraint("bbb", Condition.contains, 5);
+        DBConstraint c2 = conn.getConstraint("bbb", Condition.contains, 7);
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         constraints.add(c2);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_5_6_7_8"));
-//        assertTrue(ids.containsAll(expectedIds));
-//        assertEquals(1, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 5 and 7 in bbb");
+        expectedIds.add(getVertIDByName("bbb_5_6_7_8"));
+        assertTrue(ids.containsAll(expectedIds));
+        assertEquals(1, ids.size());
 
-
-//TODO: use new condition (TBD)
-//        c1 = conn.getConstraint("bbb", Condition.in, "asdf");
-//        constraints = new LinkedList<DBConstraint>();
-//        constraints.add(c1);
-//        ids = conn.getVertIDsByConstraints(constraints);
-//        expectedIds = new LinkedList<String>();
-//        expectedIds.add(conn.getVertIDByName("bbb_asdf"));
-//        expectedIds.add(conn.getVertIDByName("bbb_asdf4.222"));
-//        assertTrue(ids.containsAll(expectedIds));
-//        assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 'a' in bbb");
-
-//        c1 = conn.getConstraint("bbb", Condition.in, "as");
-//        constraints = new LinkedList<DBConstraint>();
-//        constraints.add(c1);
-//        ids = conn.getVertIDsByConstraints(constraints);
-//        expectedIds = new LinkedList<String>();
-//        expectedIds.add(conn.getVertIDByName("bbb_asdf"));
-//        expectedIds.add(conn.getVertIDByName("bbb_asdf4.222"));
-//        assertTrue(ids.containsAll(expectedIds));
-//        assertEquals(2, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with \"as\" in bbb");
-
-        c1 = conn.getConstraint("bbb", Condition.in, 101);
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
-//        assertEquals(0, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 101 in bbb");
-
-        c1 = conn.getConstraint("bbb", Condition.in, 103);
-        constraints = new LinkedList<DBConstraint>();
-        constraints.add(c1);
-        ids = conn.getVertIDsByConstraints(constraints);
-//        assertEquals(0, ids.size());
-        //System.out.println("Found " + ids.size() + " matching verts with 103 in bbb");
-
-        c1 = conn.getConstraint("bbb", Condition.in, 103.0);
+        c1 = conn.getConstraint("ccc", Condition.substring, "asdf");
         constraints = new LinkedList<DBConstraint>();
         constraints.add(c1);
         ids = conn.getVertIDsByConstraints(constraints);
         expectedIds = new LinkedList<String>();
-        expectedIds.add(conn.getVertIDByName("bbb_101_102_103"));
+        expectedIds.add(getVertIDByName("ccc_asdf"));
+        expectedIds.add(getVertIDByName("ccc_asdf4.222"));
+        assertTrue(ids.containsAll(expectedIds));
+        assertEquals(2, ids.size());
+
+        c1 = conn.getConstraint("ccc", Condition.substring, "as");
+        constraints = new LinkedList<DBConstraint>();
+        constraints.add(c1);
+        ids = conn.getVertIDsByConstraints(constraints);
+        expectedIds = new LinkedList<String>();
+        expectedIds.add(getVertIDByName("ccc_asdf"));
+        expectedIds.add(getVertIDByName("ccc_asdf4.222"));
+        assertTrue(ids.containsAll(expectedIds));
+        assertEquals(2, ids.size());
+// ######
+// THESE CONSTRAINTS WORK DIFFERENTLY BETWEEN IN-MEMORY AND ORIENTDB
+// 
+//        c1 = conn.getConstraint("bbb", Condition.contains, 103);
+//        constraints = new LinkedList<DBConstraint>();
+//        constraints.add(c1);
+//        ids = conn.getVertIDsByConstraints(constraints);
+//        assertEquals(0, ids.size());
+//
+//        c1 = conn.getConstraint("bbb", Condition.contains, 103.0);
+//        constraints = new LinkedList<DBConstraint>();
+//        constraints.add(c1);
+//        ids = conn.getVertIDsByConstraints(constraints);
+//        expectedIds = new LinkedList<String>();
+//        expectedIds.add(getVertIDByName("bbb_101_102_103"));
 //        assertTrue(ids.containsAll(expectedIds));
 //        assertEquals(1, ids.size());
-        //		System.out.println("Found " + ids.size() + " matching verts with 103.0 in bbb");
-*/
     }
 
 

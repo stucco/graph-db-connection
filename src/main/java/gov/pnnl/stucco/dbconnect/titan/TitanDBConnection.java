@@ -280,10 +280,12 @@ public class TitanDBConnection extends DBConnectionBase {
     private String buildQueryConstraintGremlin(List<DBConstraint> constraints, Map<String, Object> param) {
         String query = "";
         for(int i=0; i<constraints.size(); i++){
-            DBConstraint c = constraints.get(i);
+            TitanDBConstraint c = (TitanDBConstraint) constraints.get(i);
             String cond = c.condString(c.getCond());
             String key = c.getProp().toUpperCase()+i;
+            
             Object value = c.getVal();
+            value = c.constructQueryObject(value);
             param.put(key, value);
             
             query += ".has(\"" + c.getProp() + "\"," + cond + "," + key + ")";

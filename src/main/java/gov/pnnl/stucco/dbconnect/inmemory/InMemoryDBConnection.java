@@ -294,8 +294,6 @@ public class InMemoryDBConnection extends DBConnectionBase{
         //TODO: confirm that this is the best way to handle these cases.
         if(o1 == null && cond == Condition.eq && o2 == null)
             return true;
-        if ((o1 == null && o2 != null) && cond == Condition.notin )
-            return true;
             
         if(o1 == null || o2 == null)
             return false;
@@ -342,11 +340,24 @@ public class InMemoryDBConnection extends DBConnectionBase{
                 return false;
             }
         }
-        if(cond == Condition.in){
-            return contains(o1, o2);
+        if(cond == Condition.contains){
+            if(o1 instanceof Collection){
+                Collection c1 = (Collection)o1;
+                return c1.contains(o2);
+            }else{
+                return false;
+            }
         }
-        if(cond == Condition.notin){
-            return !contains(o1, o2);
+        if(cond == Condition.substring){
+            if(o1 instanceof String){
+                String s1 = (String)o1;
+                String s2 = "";
+                if(o2 instanceof String || o2 instanceof Character){
+                    s2 += o2;
+                    return s1.contains(s2);
+                }
+            }
+            return false;
         }
 
         return false;

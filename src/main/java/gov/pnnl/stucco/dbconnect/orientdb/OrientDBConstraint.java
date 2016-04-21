@@ -30,8 +30,8 @@ public class OrientDBConstraint extends DBConstraintBase {
         if(c == Condition.gte) return ">=";
         if(c == Condition.lt) return "<";
         if(c == Condition.lte) return "<=";
-        if(c == Condition.in) return "IN";
-        if(c == Condition.notin) return "NOT IN";
+        if(c == Condition.contains) return "CONTAINS";
+        if(c == Condition.substring) return "CONTAINSTEXT";
         return null;
     }
 

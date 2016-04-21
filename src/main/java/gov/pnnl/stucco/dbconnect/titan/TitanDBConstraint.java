@@ -1,5 +1,9 @@
 package gov.pnnl.stucco.dbconnect.titan;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+
 import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConstraintBase;
 
@@ -30,9 +34,38 @@ public class TitanDBConstraint extends DBConstraintBase {
         if(c == Condition.gte) return "T.gte";
         if(c == Condition.lt) return "T.lt";
         if(c == Condition.lte) return "T.lte";
-        if(c == Condition.in) return "T.in";
-        if(c == Condition.notin) return "T.notin";
+        if(c == Condition.contains) return "T.in";
+        if(c == Condition.substring) return "Text.REGEX";
         return null;
+    }
+    
+    /**
+     *  converts specific conditional types to the form Titan needs them to be.
+     * @param value
+     * @return
+     */
+    public Object constructQueryObject(Object value)
+    {
+        Object newValue = value;
+        Condition c = getCond();
+        if(c == Condition.contains)
+        {
+            if (newValue instanceof Collection )
+            {
+                throw new IllegalArgumentException();
+            } 
+            // put it a set
+            newValue = Collections.singleton(value);
+        }
+        else if(c == Condition.substring)
+        {
+            // the incoming value is a string
+            // .*\\Q<value>\\E.*
+            // the value must escape regex characters
+            newValue = String.format(".*\\Q%s\\E.*", newValue.toString());
+        }
+
+        return newValue;
     }
 
 }
