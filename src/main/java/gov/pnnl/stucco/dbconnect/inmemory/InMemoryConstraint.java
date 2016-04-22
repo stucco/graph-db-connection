@@ -19,17 +19,6 @@ public class InMemoryConstraint extends DBConstraintBase {
     public InMemoryConstraint(String property, Condition condition, Object value){
         super(property, condition, value);
     }
-    
-	/*
-	 * T.gt - greater than
-	 * T.gte - greater than or equal to
-	 * T.eq - equal to
-	 * T.neq - not equal to
-	 * T.lte - less than or equal to
-	 * T.lt - less than
-	 * T.in - contained in a list
-	 * T.notin - not contained in a list
-	 */
 
 	public String condString(Condition c){
 		if(c == Condition.eq) return "T.eq";
@@ -42,5 +31,5 @@ public class InMemoryConstraint extends DBConstraintBase {
 		if(c == Condition.substring) return "T.substring";
 		return null;
 	}
-	
+
 }

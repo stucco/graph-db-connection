@@ -432,6 +432,67 @@ public class InMemoryDBConnection extends DBConnectionBase{
             }
             return false;
         }
+
+        return false;
+    }
+
+    /**
+     * Determines based on object type whether a value (in the incoming lists) is contained
+     * in the other other incoming list 
+     * @param o1
+     * @param o2
+     * @return true or false
+     */
+    private boolean contains(Object o1, Object o2){
+        //TODO: confirm that all of these are behaving as a user would expect for all type combinations.
+        //eg. "asdf4.222" does not contain (Double)4.2 or (Integer)4
+        //[101.0, 102.0] does not contain 101, and [101, 102] does not contain 101.0
+        if(o1 instanceof Collection){
+            Collection c1 = (Collection)o1;
+            return c1.contains(o2);
+        }else if(o1 instanceof byte[]){
+            byte[] a1 = (byte[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Byte)a1[i]).equals(o2)) return true;
+            }
+        }else if(o1 instanceof short[]){
+            short[] a1 = (short[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Short)a1[i]).equals(o2)) return true;
+            }
+        }else if(o1 instanceof int[]){
+            int[] a1 = (int[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Integer)a1[i]).equals(o2)) return true;
+            }
+        }else if(o1 instanceof long[]){
+            long[] a1 = (long[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Long)a1[i]).equals(o2)) return true;
+            }
+        }else if(o1 instanceof float[]){
+            float[] a1 = (float[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Float)a1[i]).equals(o2)) return true;
+            }
+        }else if(o1 instanceof double[]){
+            double[] a1 = (double[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Double)a1[i]).equals(o2)) return true;
+            }
+        }else if(o1 instanceof boolean[]){
+            boolean[] a1 = (boolean[])o1;
+            for(int i=0; i<a1.length; i++){
+                //System.out.println("val is " + a1[i]);
+                if( ((Boolean)a1[i]).equals(o2)) return true;
+            }
+        }
         return false;
     }
 
