@@ -4,9 +4,7 @@ jdk:
   - openjdk7
   - oraclejdk8
 env:
-  - STUCCO_DB_TYPE=INMEMORY
-  - STUCCO_DB_CONFIG="config/inmemory.yml"
-  - STUCCO_DB_INDEX_CONFIG="config/inmemory.yml"
+  - STUCCO_DB_TYPE=INMEMORY STUCCO_DB_CONFIG="config/inmemory.yml" STUCCO_DB_INDEX_CONFIG="config/inmemory.yml"
 after_success:
   - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
   - chmod a+x ./rerun-test.sh
