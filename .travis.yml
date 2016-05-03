@@ -3,11 +3,10 @@ jdk:
   - oraclejdk7
   - openjdk7
   - oraclejdk8
-before_install:
-  - mvn --non-recursive scm:checkout -Dmodule.name=document-service-client-java
-  - cd document-service-client-java
-  - mvn -e clean install -Dmaven.test.skip=true
-  - cd ..
+env:
+  - STUCCO_DB_TYPE=INMEMORY
+  - STUCCO_DB_CONFIG="config/inmemory.yml"
+  - STUCCO_DB_INDEX_CONFIG="config/inmemory.yml"
 after_success:
   - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
   - chmod a+x ./rerun-test.sh
