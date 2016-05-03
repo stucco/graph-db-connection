@@ -1,0 +1,16 @@
+language: java
+jdk:
+  - oraclejdk7
+  - openjdk7
+  - oraclejdk8
+before_install:
+  - mvn --non-recursive scm:checkout -Dmodule.name=document-service-client-java
+  - cd document-service-client-java
+  - mvn -e clean install -Dmaven.test.skip=true
+  - cd ..
+after_success:
+  - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
+  - chmod a+x ./rerun-test.sh
+  - ./rerun-test.sh
+notifications:
+  slack: sava:lB0VBcWKom3VNlr126hyI04E
