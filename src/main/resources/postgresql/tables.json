@@ -1,492 +1,440 @@
 {
-  "Edges": {
-    "outVertID": {
-      "constraint": "uuid NOT NULL",
-      "type": "uuid"
-    }, 
-    "inVertID": {
-      "constraint": "uuid NOT NULL",
-      "type": "uuid"
-    },
-    "relation": {
-      "constraint": "text NOT NULL",
-      "type": "text"
+  "edges": {
+    "Edge": {
+      "outVertID": {
+        "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
+        "type": "uuid"
+      }, 
+      "inVertID": {
+        "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
+        "type": "uuid"
+      }, 
+      "relation": {
+        "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
+        "type": "text"
+      }
     }
   },
-  "AddressRange": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "endIP": {
-      "constraint": "cidr NOT NULL",
-      "type": "cidr"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "startIP": {
-      "constraint": "cidr NOT NULL",
-      "type": "cidr"
-    },
-    "startIPInt": {
-      "constraint": "bigint NOT NULL",
-      "type": "bigint"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }, 
-    "location": {
-      "constraint": "text",
-      "type": "text"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "observableType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "endIPInt": {
-      "constraint": "bigint NOT NULL",
-      "type": "bigint"
-    }
-  },
-  "IP": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "ipInt": {
-      "constraint": "bigint NOT NULL UNIQUE",
-      "type": "bigint"
-    },
-    "name": {
-      "constraint": "cidr NOT NULL UNIQUE",
-      "type": "cidr"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "observableType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    }
-  },
-  "Vulnerability": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "publishedDate": {
-      "constraint": "TIMESTAMP WITH TIME ZONE",
-      "type": "timestamp"
-    }
-  },
-  "Exploit_Target": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Indicator": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Observable": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "observableType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    }
-  },
-  "TTP": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Campaign": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Course_Of_Action": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Weakness": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Malware": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "details": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Exploit": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Incident": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    }
-  },
-  "Threat_Actor": {
-    "ID": {
-      "constraint": "uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE",
-      "type": "uuid"
-    },
-    "vertexType": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "sourceDocument": {
-      "constraint": "text NOT NULL UNIQUE",
-      "type": "text"
-    },
-    "name": {
-      "constraint": "text NOT NULL",
-      "type": "text"
-    },
-    "description": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "alias": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "shortDescription": {
-      "constraint": "text ARRAY",
-      "type": "array"
-    },
-    "source": {
-      "constraint": "text ARRAY",
-      "type": "array"
+  "vertices": {
+    "AddressRange": {
+      "endIP": {
+        "constraint": "cidr NOT NULL",
+        "type": "cidr"
+      }, 
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "startIP": {
+        "constraint": "cidr NOT NULL",
+        "type": "cidr"
+      },
+      "startIPInt": {
+        "constraint": "bigint NOT NULL",
+        "type": "bigint"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }, 
+      "location": {
+        "constraint": "text",
+        "type": "text"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "observableType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "endIPInt": {
+        "constraint": "bigint NOT NULL",
+        "type": "bigint"
+      }
+    },
+    "IP": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "ipInt": {
+        "constraint": "bigint NOT NULL UNIQUE",
+        "type": "bigint"
+      },
+      "name": {
+        "constraint": "cidr NOT NULL UNIQUE",
+        "type": "cidr"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "observableType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      }
+    },
+    "Vulnerability": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "publishedDate": {
+        "constraint": "TIMESTAMP WITH TIME ZONE",
+        "type": "timestamp"
+      }
+    },
+    "Exploit_Target": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Indicator": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Observable": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "observableType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      }
+    },
+    "TTP": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Campaign": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Course_Of_Action": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Weakness": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Malware": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "details": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Exploit": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Incident": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
+    },
+    "Threat_Actor": {
+      "vertexType": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "sourceDocument": {
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
+      },
+      "name": {
+        "constraint": "text NOT NULL",
+        "type": "text"
+      },
+      "description": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "alias": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "shortDescription": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      },
+      "source": {
+        "constraint": "text ARRAY",
+        "type": "array"
+      }
     }
   }
 }

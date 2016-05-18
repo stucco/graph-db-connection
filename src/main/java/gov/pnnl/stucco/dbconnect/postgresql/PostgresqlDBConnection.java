@@ -11,6 +11,8 @@ import java.sql.Statement;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet; 
 import java.sql.SQLException;
+import java.sql.Array;
+import java.sql.ResultSetMetaData;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -19,9 +21,11 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
-import java.util.HashSet;
+import java.util.HashSet; 
 import java.util.List;
-import java.util.Properties;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.apache.commons.io.IOUtils;
 
@@ -33,7 +37,8 @@ import org.slf4j.LoggerFactory;
 public class PostgresqlDBConnection extends DBConnectionBase {
     private static final String POSTGRESQL_TABLES = "postgresql/tables.json";
     private static final String[] SELECT_FROM_TABLE;
-    private static final JSONObject tables;
+    private static final JSONObject vertTables;
+    private static final JSONObject edgeTable;
     private static Logger logger;
     private Map<String, Object> configuration;
     private Connection connection;
@@ -41,7 +46,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     static {
         try {
-            tables = new JSONObject(IOUtils.toString(PostgresqlDBConnection.class.getClassLoader().getResourceAsStream(POSTGRESQL_TABLES), "UTF-8"));
+            JSONObject tables = new JSONObject(IOUtils.toString(PostgresqlDBConnection.class.getClassLoader().getResourceAsStream(POSTGRESQL_TABLES), "UTF-8"));
+            vertTables = tables.getJSONObject("vertices");
+            edgeTable = tables.getJSONObject("edges");
     /*        JSONObject newTables = new JSONObject();
             for (Object k : tables.keySet()) {
                 JSONObject table = tables.getJSONObject(k.toString());
@@ -130,19 +137,23 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     private void createTables() throws SQLException {
         statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
-        for (Object key : tables.keySet()) {
+        //creating tables for vertices
+        for (Object key : vertTables.keySet()) {
             String tableName = key.toString();
-            JSONObject table = tables.getJSONObject(tableName);
+            JSONObject table = vertTables.getJSONObject(tableName);
             String sql = buildCreateTableSQL(tableName, table);
             statement.executeUpdate(sql);
         } 
+        //creating table for edges
+        String sql = ("CREATE TABLE IF NOT EXISTS Edges (outVertID uuid NOT NULL, inVertID uuid NOT NULL, relation text NOT NULL);");
+        statement.executeUpdate(sql);
     }
 
     private String buildCreateTableSQL(String tableName, JSONObject table) {
         String prefix = "";
         StringBuilder sql = new StringBuilder("CREATE TABLE IF NOT EXISTS ");
         sql.append(tableName);
-        sql.append(" (");
+        sql.append(" (_id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE, ");
         for (Object key : table.keySet()) {
             sql.append(prefix);
             String propertyName = key.toString();
@@ -199,7 +210,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             statement.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
             ResultSet rs = statement.getGeneratedKeys();
             rs.next();
-            id = rs.getString("id");
+            id = rs.getString("_id");
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
@@ -216,7 +227,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     private static String buildInsertSQL(String tableName, Map<String, Object> properties) {
         String prefix = "";
-        JSONObject table = tables.getJSONObject(tableName);
+        JSONObject table = vertTables.getJSONObject(tableName);
         StringBuilder propertiesSQL = new StringBuilder();
         StringBuilder valuesSQL = new StringBuilder();
         for (String propertyName : properties.keySet()) {
@@ -286,27 +297,64 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public Map<String, Object> getVertByID(String id) {
-        System.out.println("In get vert by id = " + id);
         if (id == null || id.isEmpty()) {
             return null;
         }
-        for (String select_from_table : SELECT_FROM_TABLE) {
-            StringBuilder sql = new StringBuilder(select_from_table)
-                .append(" WHERE ID = '")
+        Map<String, Object> vertex = null;
+        for (Object key : vertTables.keySet()) {
+            String tableName = key.toString();
+            StringBuilder sql = new StringBuilder("SELECT * FROM ")
+                .append(tableName)
+                .append(" WHERE _id = '")
                 .append(id)
                 .append("';");
             try {
                 ResultSet rs = statement.executeQuery(sql.toString());
-                rs.next();
-                System.out.println(rs);
+                if (rs.next()) {
+                    vertex = convertResultSetToMap(tableName, rs);
+                    break;
+                }
             } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
                 logger.warn(getStackTrace(e));
             }
         }
 
-        return null; 
+        for (String n : vertex.keySet()) {
+            System.out.println(n + " = " + vertex.get(n));
+        }
+
+        return vertex; 
     };
+
+    /**
+     * take ResultSet from sql query and converts it into HashMap<String, Object>
+     * @param rs - ResultSet containing all sql selected values
+     * @param tableName - name of a table that was quered, required to check if value is an array
+     * @return map - map with key = column name and value = column value
+     */
+    private Map<String, Object> convertResultSetToMap(String tableName, ResultSet rs) throws SQLException {
+        Map<String, Object> map = new HashMap<String, Object>();
+        JSONObject table = vertTables.getJSONObject(tableName);
+        for (Object column : table.keySet()) {
+            String columnName = column.toString();
+            String valueType = table.getJSONObject(columnName).getString("type");
+            if (valueType.equals("array")) {
+                Array array = rs.getArray(columnName);
+                if (array != null) {
+                    Object value = Arrays.asList((Object[])array.getArray());
+                    map.put(columnName, value);
+                }
+            } else {
+                Object value = rs.getObject(columnName);
+                if (value != null) {
+                    map.put(columnName, value);
+                }
+            }
+        }
+
+        return map;
+    }
 
     /**
      * create an edge given two vertex IDs with a specific relationship type
@@ -349,8 +397,28 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @return list of edge property maps
      */
     @Override
-    public List<Map<String, Object>> getOutEdges(String outVertID){
-        return null;
+    public List<Map<String, Object>> getOutEdges(String outVertID) {
+        if (outVertID == null || outVertID.equals("")) {
+            throw new IllegalArgumentException("cannot find edges with missing or invalid outVertID");
+        } 
+        List<Map<String, Object>> outEdges = new ArrayList<Map<String, Object>>();
+        StringBuilder query = new StringBuilder()
+            .append("SELECT * FROM Edges WHERE outVertID = '")
+            .append(outVertID)
+            .append("';");
+        try {
+            ResultSet rs = statement.executeQuery(query.toString());
+            while (rs.next()) {
+                Map<String, Object> map = edgesResultSetToMap(rs);
+                outEdges.add(map);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to select out edges for outVertID = " + outVertID);
+        }    
+
+        return outEdges;
     };
 
     /**
@@ -359,9 +427,42 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @return list of edge property maps
      */
     @Override
-    public List<Map<String, Object>> getInEdges(String inVertID){
-        return null;
+    public List<Map<String, Object>> getInEdges(String inVertID) {
+        if (inVertID == null || inVertID.equals("")) {
+            throw new IllegalArgumentException("cannot find edges with missing or invalid inVertID");
+        } 
+
+        List<Map<String, Object>> inEdges = new ArrayList<Map<String, Object>>();
+        StringBuilder query = new StringBuilder()
+            .append("SELECT * FROM Edges WHERE inVertID = '")
+            .append(inVertID)
+            .append("';");
+        try {
+            ResultSet rs = statement.executeQuery(query.toString());
+            while (rs.next()) {
+                Map<String, Object> map = edgesResultSetToMap(rs);
+                inEdges.add(map);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to select in edges for inVertID = " + inVertID);
+        }      
+
+        return inEdges;
     };
+
+    /**
+     * convert ResultSet from quering Edges table to Map<String, Object>
+     */
+    private static Map<String, Object> edgesResultSetToMap(ResultSet rs) throws SQLException {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("outVertID", rs.getString("outVertID"));
+        map.put("inVertID", rs.getString("inVertID"));
+        map.put("relation", rs.getString("relation"));
+
+        return map;
+    }
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
@@ -452,7 +553,26 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @param relation - relationship type
      */
     @Override
-    public void removeEdgeByRelation(String inVertID, String outVertID, String relation){};
+    public void removeEdgeByRelation(String inVertID, String outVertID, String relation) {
+        if (relation == null || relation.equals("") ) {
+            throw new IllegalArgumentException("cannot add edge with missing or invalid relation");
+        }
+        if (inVertID == null || inVertID.equals("") ) {
+            throw new IllegalArgumentException("cannot add edge with missing or invalid inVertID");
+        }
+        if (outVertID == null || outVertID.equals("")) {
+            throw new IllegalArgumentException("cannot add edge with missing or invalid outVertID");
+        }
+        StringBuilder query = new StringBuilder()
+            .append("DELETE FROM Edges WHERE inVertID = '")
+            .append(inVertID)
+            .append("' AND outVertID = '")
+            .append(outVertID)
+            .append("' AND relation = '")
+            .append(relation)
+            .append("';");
+        executeSQLQuery(query.toString());
+    };
 
     /**
      * Given a specific vertex remove it from the DB
@@ -460,7 +580,45 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @param id - vertex ID
      */
     @Override
-    public void removeVertByID(String id){};
+    public void removeVertByID(String id) {
+        if (id == null || id.equals("")) {
+            throw new IllegalArgumentException("cannot find vert with missing or invalid id");
+        } 
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString();
+            StringBuilder query = new StringBuilder()
+                .append("DELETE FROM ")
+                .append(tableName)
+                .append(" WHERE _id = '")
+                .append(id)
+                .append("';");
+            try {
+                int result = statement.executeUpdate(query.toString());
+                if (result == 1) {
+                    break;
+                }
+            } catch (SQLException e) {
+                logger.warn(e.getLocalizedMessage());
+                logger.warn(getStackTrace(e));
+                throw new StuccoDBException("failed to delete vertex with id = " + id);
+            }
+        }
+        // removing corresponding edges
+        removeEdgeByVertID(id);
+    };
+
+    /**
+     * remove edge if it contains outVertID or inVertID matching id
+     */
+    private void removeEdgeByVertID(String id) {
+        StringBuilder query = new StringBuilder()
+            .append("DELETE FROM Edges WHERE outVertID = '")
+            .append(id)
+            .append("' OR inVertID = '")
+            .append(id)
+            .append("';");
+        executeSQLQuery(query.toString());
+    }
     
     /**
      * Replaces current vertex's property map with a different one
@@ -468,7 +626,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @param properties - property map with different contents, complete replacement of current content
      */
     @Override
-    public void updateVertex(String id, Map<String, Object> properties){};
+    public void updateVertex(String id, Map<String, Object> properties) {
+    };
 
     @Override
     protected void setPropertyInDB(String id, String key, Object newValue) {
@@ -480,10 +639,12 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void removeAllVertices() {
-        for (Object tableName : tables.keySet()) {
+        //removing content of vert tables 
+        for (Object tableName : vertTables.keySet()) {
             String sql = String.format("DELETE FROM %s", tableName.toString());
             executeSQLQuery(sql);
         }
+        //removing content of edge table
         executeSQLQuery("DELETE FROM Edges");
     };
 
@@ -492,7 +653,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     private void executeSQLQuery(String query) {
         try {
-            statement.executeUpdate(query);
+            statement.execute(query);
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
@@ -512,21 +673,48 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     @Override
     public void saveState(String filePath){};
 
-        /**
-     * gets the number of vertices in the graph
+    /**
+     * gets the number of vertices in the graph; aka number of rows in all vertex tables in the database
      */
     @Override
     public long getVertCount() {
-        long l = 1L;
-        return l;
+        long count = 0L;
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString();
+            String countSQL = String.format("SELECT COUNT(*) FROM %s;", tableName);
+            try {
+                ResultSet rs = statement.executeQuery(countSQL);
+                if (rs.next()) {
+                    count += rs.getLong(1);
+                }
+            } catch (SQLException e) {
+                logger.warn(e.getLocalizedMessage());
+                logger.warn(getStackTrace(e));
+                throw new StuccoDBException("failed to count rows in table: " + tableName);
+            }
+        }
+        
+        return count;
     };
     
     /**
-     * gets the number of edges in the graph
+     * gets the number of edges in the graph; aka number of rows in "Edges" table in the database
      */
     @Override
     public long getEdgeCount(){
-        return 1L;
+        long count = 0L;
+        try {
+            ResultSet rs = statement.executeQuery("SELECT COUNT(*) FROM Edges;");
+            if (rs.next()) {
+                count = rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to count rows in Edge table");
+        }
+
+        return count;
     };
 
     /**
@@ -537,7 +725,39 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @return a count of edges
      */
     @Override
-    public int getEdgeCountByRelation(String inVertID, String outVertID, String relation){
+    public int getEdgeCountByRelation(String inVertID, String outVertID, String relation) {
+        if (relation == null || relation.equals("") ) {
+            throw new IllegalArgumentException("cannot add edge with missing or invalid relation");
+        }
+        if (inVertID == null || inVertID.equals("") ) {
+            throw new IllegalArgumentException("cannot add edge with missing or invalid inVertID");
+        }
+        if (outVertID == null || outVertID.equals("")) {
+            throw new IllegalArgumentException("cannot add edge with missing or invalid outVertID");
+        } 
+
+        int count = 0;
+        StringBuilder query = new StringBuilder()
+            .append("SELECT COUNT(*) FROM Edges WHERE inVertID = '")
+            .append(inVertID)
+            .append("' AND outVertID = '")
+            .append(outVertID)
+            .append("' AND inVertID = '")
+            .append(inVertID)
+            .append("' AND relation = '")
+            .append(relation)
+            .append("';");
+        try {
+            ResultSet rs = statement.executeQuery(query.toString());
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to count rows in Edge table");
+        }
+
         return 0;
     };
     
