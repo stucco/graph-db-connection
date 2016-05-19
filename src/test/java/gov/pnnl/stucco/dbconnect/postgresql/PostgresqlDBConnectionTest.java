@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
-/**
+/** 
  * Unit test for generically Testing the DBConnection
  * NOTE: two environment variable must be defined:
  *       STUCCO_DB_CONFIG=<path/filename.yml>
@@ -144,18 +144,122 @@ public class PostgresqlDBConnectionTest extends TestCase {
 
     public void testUpdateProperties() {
         String vertString =
-            "{" +
-            "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:ip-cf1042ad-8f95-47e2-830d-4951f81f5241\\\"><cybox:Title>IP<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">LoginEvent<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:ip-3232238091\\\"><cybox:Description>192.168.10.11<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\">216.98.188.1<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
-            "      \"vertexType\": \"IP\"," +
-            "      \"ipInt\": 3630349313," +
-            "      \"name\": \"216.98.188.1\"," +
-            "      \"observableType\": \"Address\"" +
+            "{"+
+            "      \"endIP\": \"216.98.188.255\","+
+            "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:addressRange-33f72b4c-e6f2-4d82-88d4-2a7711ce7bfe\\\"><cybox:Title>AddressRange<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">CAIDA<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:addressRange-3630349312-3630349567\\\"><cybox:Description>216.98.188.0 through 216.98.188.255<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\" apply_condition=\\\"ANY\\\" condition=\\\"InclusiveBetween\\\" delimiter=\\\" - \\\">216.98.188.0 - 216.98.188.255<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
+            "      \"vertexType\": \"AddressRange\","+
+            "      \"startIP\": \"216.98.188.0\","+
+            "      \"startIPInt\": 3630349312,"+
+            "      \"name\": \"216.98.188.0 - 216.98.188.255\","+
+            "      \"source\": [\"CAIDA\"],"+
+            "      \"endIPInt\": 3630349567,"+
+            "      \"observableType\": \"Address\""+
+            "}";
+
+        String vertUpdatedString = 
+            "{"+
+            "      \"endIP\": \"216.98.188.255\","+
+            "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:addressRange-33f72b4c-e6f2-4d82-88d4-2a7711ce7bfe\\\"><cybox:Title>AddressRange<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">CAIDA<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:addressRange-3630349312-3630349567\\\"><cybox:Description>216.98.188.0 through 216.98.188.255<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\" apply_condition=\\\"ANY\\\" condition=\\\"InclusiveBetween\\\" delimiter=\\\" - \\\">216.98.188.0 - 216.98.188.255<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
+            "      \"vertexType\": \"AddressRange\","+
+            "      \"startIP\": \"216.98.188.0\","+
+            "      \"startIPInt\": 3630349312,"+
+            "      \"name\": \"216.98.188.0 - 216.98.188.255\","+
+            "      \"description\": [\"Range of addresses from 216.98.188.0 through 216.98.188.255\"],"+
+            "      \"source\": [\"GeoIP\"],"+
+            "      \"endIPInt\": 3630349567,"+
+            "      \"observableType\": \"Address\""+
             "}";
         try {
             conn.removeAllVertices();
-            conn.addVertex(conn.jsonVertToMap(new JSONObject(vertString)));
-            long count = conn.getVertCount();
-            assertEquals(count, 1);
+            Map<String, Object> vert = conn.jsonVertToMap(new JSONObject(vertString));
+            String id = conn.addVertex(vert);
+            Map<String, Object> dbVert = conn.getVertByID(id);
+            assertEquals(vert, dbVert);
+
+            Map<String, Object> vertUpdate = conn.jsonVertToMap(new JSONObject(vertUpdatedString));
+            conn.updateVertex(id, vertUpdate);
+            Map<String, Object> dbVertUpdate = conn.getVertByID(id);
+            assertEquals(vertUpdate, dbVertUpdate);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void testGetVertIDsByRelation() {
+        String graphString = 
+            "{"+
+            "  \"vertices\": {"+
+            "    \"TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341\": {"+
+            "      \"vertexType\": \"TTP\","+
+            "      \"sourceDocument\": \"<stix:TTP xmlns:stix=\\\"http://stix.mitre.org/stix-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xsi:type=\\\"ttp:TTPType\\\" id=\\\"TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341\\\"><ttp:Title xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\">Related TTP<\\/ttp:Title><\\/stix:TTP>\","+
+            "      \"name\": \"TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341\""+
+            "    },"+
+            "    \"Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb\": {"+
+            "      \"vertexType\": \"Course_Of_Action\","+
+            "      \"sourceDocument\": \"<stix:Course_Of_Action xmlns:stix=\\\"http://stix.mitre.org/stix-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xsi:type=\\\"coa:CourseOfActionType\\\" id=\\\"Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb\\\"><coa:Title xmlns:coa=\\\"http://stix.mitre.org/CourseOfAction-1\\\">COA Title<\\/coa:Title><\\/stix:Course_Of_Action>\","+
+            "      \"name\": \"Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb\""+
+            "    },"+
+            "    \"Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb\": {"+
+            "      \"vertexType\": \"Indicator\","+
+            "      \"sourceDocument\": \"<stix:Indicator xmlns:stix=\\\"http://stix.mitre.org/stix-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xsi:type=\\\"indicator:IndicatorType\\\" id=\\\"Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb\\\"><indicator:Title xmlns:indicator=\\\"http://stix.mitre.org/Indicator-2\\\">Indicator One Title<\\/indicator:Title><indicator:Indicated_TTP xmlns:indicator=\\\"http://stix.mitre.org/Indicator-2\\\"><stixCommon:TTP xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xsi:type=\\\"ttp:TTPType\\\" idref=\\\"TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341\\\" /><\\/indicator:Indicated_TTP><indicator:Suggested_COAs xmlns:indicator=\\\"http://stix.mitre.org/Indicator-2\\\"><indicator:Suggested_COA><stixCommon:Course_Of_Action xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xsi:type=\\\"coa:CourseOfActionType\\\" idref=\\\"Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb\\\" /><\\/indicator:Suggested_COA><\\/indicator:Suggested_COAs><\\/stix:Indicator>\","+
+            "      \"name\": \"Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb\","+
+            "       \"alias\": [" +
+            "           \"TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341\"," +
+            "           \"Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb\"]" +
+            "    }"+
+            "  },"+
+            "  \"edges\": ["+
+            "    {"+
+            "      \"outVertID\": \"Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb\","+
+            "      \"inVertID\": \"TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341\","+
+            "      \"relation\": \"IndicatedTTP\""+
+            "    },"+
+            "    {"+
+            "      \"outVertID\": \"Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb\","+
+            "      \"inVertID\": \"Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb\","+
+            "      \"relation\": \"SuggestedCOA\""+
+            "    }"+
+            "  ]"+
+            "}";
+
+        try {
+            JSONObject verts = new JSONObject(graphString).getJSONObject("vertices");
+            Map<String, Object> indicatorMap = conn.jsonVertToMap(verts.getJSONObject("Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb"));
+            String indicatorID = conn.addVertex(indicatorMap);
+            Map<String, Object> indicatorMapDB = conn.getVertByID(indicatorID);
+            assertEquals(indicatorMap, indicatorMapDB);
+
+            Map<String, Object> ttpMap = conn.jsonVertToMap(verts.getJSONObject("TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341"));
+            String ttpID = conn.addVertex(ttpMap);
+            Map<String, Object> ttpMapDB = conn.getVertByID(ttpID);
+            assertEquals(ttpMap, ttpMapDB);
+
+            Map<String, Object> coaMap = conn.jsonVertToMap(verts.getJSONObject("Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb"));
+            String coaID = conn.addVertex(coaMap);
+            Map<String, Object> coaMapDB = conn.getVertByID(coaID);
+            assertEquals(coaMap, coaMapDB);
+
+            conn.addEdge(ttpID, indicatorID, "IndicatedTTP");
+            conn.addEdge(coaID, indicatorID, "SuggestedCOA");
+
+            List<String> inVertIDs = conn.getInVertIDsByRelation(indicatorID, "IndicatedTTP");
+            assertEquals(inVertIDs.size(), 1);
+            assertEquals(inVertIDs.get(0), ttpID);
+
+            inVertIDs = conn.getInVertIDsByRelation(indicatorID, "SuggestedCOA");
+            assertEquals(inVertIDs.size(), 1);
+            assertEquals(inVertIDs.get(0), coaID);
+
+            List<String> vertIDs = conn.getVertIDsByRelation(indicatorID, "IndicatedTTP");
+            assertEquals(vertIDs.size(), 1);
+            ttpMapDB = conn.getVertByID(vertIDs.get(0));
+            assertEquals(ttpMap, ttpMapDB);
+
+            vertIDs = conn.getVertIDsByRelation(indicatorID, "SuggestedCOA");
+            assertEquals(vertIDs.size(), 1);
+            coaMapDB = conn.getVertByID(vertIDs.get(0));
+            assertEquals(coaMap, coaMapDB);
+
         } catch (RuntimeException e) {
             e.printStackTrace();
         }

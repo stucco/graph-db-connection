@@ -18,8 +18,8 @@
   "vertices": {
     "AddressRange": {
       "endIP": {
-        "constraint": "cidr NOT NULL",
-        "type": "cidr"
+        "constraint": "text NOT NULL",
+        "type": "text"
       }, 
       "vertexType": {
         "constraint": "text NOT NULL",
@@ -30,9 +30,9 @@
         "type": "text"
       },
       "startIP": {
-        "constraint": "cidr NOT NULL",
-        "type": "cidr"
-      },
+        "constraint": "text NOT NULL",
+        "type": "text"
+      }, 
       "startIPInt": {
         "constraint": "bigint NOT NULL",
         "type": "bigint"
@@ -76,8 +76,8 @@
         "type": "bigint"
       },
       "name": {
-        "constraint": "cidr NOT NULL UNIQUE",
-        "type": "cidr"
+        "constraint": "text NOT NULL UNIQUE",
+        "type": "text"
       },
       "description": {
         "constraint": "text ARRAY",
