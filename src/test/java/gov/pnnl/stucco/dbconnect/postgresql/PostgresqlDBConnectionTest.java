@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
 import java.util.Collection;
-
+ 
 import junit.framework.TestCase;
 
 import org.junit.After; 
@@ -42,6 +42,8 @@ public class PostgresqlDBConnectionTest extends TestCase {
         factory.setConfiguration("./config/postgresql.yml");
         conn = factory.getDBConnectionTestInterface();
         conn.open();
+        String s = "";
+        System.out.println("s.isEmpty() = " + s.isEmpty());
     }
 
     public void tearDown(){
@@ -63,20 +65,15 @@ public class PostgresqlDBConnectionTest extends TestCase {
             "  \"source\": [\"Source\"] " +
             "}";
 
-        String id;
-        try {
-            conn.removeAllVertices();
-            Map<String, Object> vertex = conn.jsonVertToMap(new JSONObject(vertexString));
-            id = conn.addVertex(vertex);
-            Map<String, Object> expectedVertex = conn.getVertByID(id);
-            assertEquals(vertex, expectedVertex);
-            long count = conn.getVertCount();
-            System.out.println("vert count = " + count);
-            count = conn.getEdgeCount();
-            System.out.println("edge count = " + count);
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-        }
+        conn.removeAllVertices();
+        Map<String, Object> vertex = conn.jsonVertToMap(new JSONObject(vertexString));
+        String id = conn.addVertex(vertex);
+        Map<String, Object> expectedVertex = conn.getVertByID(id);
+        assertEquals(vertex, expectedVertex);
+        long count = conn.getVertCount();
+        System.out.println("vert count = " + count);
+        count = conn.getEdgeCount();
+        System.out.println("edge count = " + count);
     }
 
     public void testLoadTwoVerticesOneEdge() {
@@ -106,40 +103,46 @@ public class PostgresqlDBConnectionTest extends TestCase {
 
         JSONObject graph = new JSONObject(graphString);
         JSONObject vertices = graph.getJSONObject("vertices");
-        try {
-            conn.removeAllVertices();
-            Map<String, Object> indicatorVertex = conn.jsonVertToMap(vertices.getJSONObject("Indicator-a32549e9-02ea-4891-8f4d-e3b0412ac402")); 
-            String outVertID = conn.addVertex(indicatorVertex);
-            Map<String, Object> ttpVertex = conn.jsonVertToMap(vertices.getJSONObject("TTP-e94f0d8c-8f73-41a6-a834-9bcada3d3c70"));
-            String inVertID = conn.addVertex(ttpVertex);
-            conn.addEdge(inVertID, outVertID, "IndicatedTTP");
-            Map<String, Object> expectedIndicatorVertex = conn.getVertByID(outVertID);
-            assertEquals(indicatorVertex, expectedIndicatorVertex);
-            Map<String, Object> expectedTTPVertex = conn.getVertByID(inVertID);
-            assertEquals(ttpVertex, expectedTTPVertex);
-            long count = conn.getVertCount();
-            System.out.println("count = " + count);
-            count = conn.getEdgeCount();
-            List<Map<String, Object>> outEdges = conn.getOutEdges(outVertID);
-            assertEquals(outEdges.size(), 1);
-            Map<String, Object> outEdge = outEdges.get(0);
-            assertEquals(outEdge.get("outVertID"), outVertID);
-            assertEquals(outEdge.get("inVertID"), inVertID);
-            assertEquals(outEdge.get("relation"), "IndicatedTTP");
-            List<Map<String, Object>> inEdges = conn.getInEdges(inVertID);
-            assertEquals(inEdges.size(), 1);
-            assertEquals(outEdges, inEdges);
-            conn.removeVertByID(outVertID);
-            count = conn.getVertCount();
-            assertEquals(count, 1);
-            count = conn.getEdgeCount();
-            assertEquals(count, 0);
-            conn.removeVertByID(inVertID);
-            count = conn.getVertCount();
-            assertEquals(count, 0);
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-        }
+            
+        conn.removeAllVertices();
+        Map<String, Object> indicatorVertex = conn.jsonVertToMap(vertices.getJSONObject("Indicator-a32549e9-02ea-4891-8f4d-e3b0412ac402")); 
+        String outVertID = conn.addVertex(indicatorVertex);
+        Map<String, Object> expectedIndicatorVertex = conn.getVertByID(outVertID);
+        assertEquals(indicatorVertex, expectedIndicatorVertex);
+
+        Map<String, Object> ttpVertex = conn.jsonVertToMap(vertices.getJSONObject("TTP-e94f0d8c-8f73-41a6-a834-9bcada3d3c70"));
+        String inVertID = conn.addVertex(ttpVertex);
+        Map<String, Object> expectedTTPVertex = conn.getVertByID(inVertID);
+        assertEquals(ttpVertex, expectedTTPVertex);
+
+        conn.addEdge(inVertID, outVertID, "IndicatedTTP");
+        List<Map<String, Object>> outEdges = conn.getOutEdges(outVertID);
+        assertEquals(outEdges.size(), 1);
+        Map<String, Object> outEdge = outEdges.get(0);
+        assertEquals(outEdge.get("outVertID"), outVertID);
+        assertEquals(outEdge.get("inVertID"), inVertID);
+        assertEquals(outEdge.get("relation"), "IndicatedTTP");
+        List<Map<String, Object>> inEdges = conn.getInEdges(inVertID);
+        assertEquals(inEdges.size(), 1);
+        assertEquals(outEdges, inEdges);
+
+        long vertCount = conn.getVertCount();
+        assertEquals(vertCount, 2);
+        long edgeCount = conn.getEdgeCount();
+        assertEquals(edgeCount, 1);
+        edgeCount = 0;
+        edgeCount = conn.getEdgeCountByRelation(inVertID, outVertID, "IndicatedTTP");
+        assertEquals(edgeCount, 1);
+
+        conn.removeVertByID(outVertID);
+        vertCount = conn.getVertCount();
+        assertEquals(vertCount, 1);
+        edgeCount = conn.getEdgeCount();
+        assertEquals(edgeCount, 0);
+
+        conn.removeVertByID(inVertID);
+        vertCount = conn.getVertCount();
+        assertEquals(vertCount, 0);
     }
 
     public void testUpdateProperties() {
@@ -169,20 +172,17 @@ public class PostgresqlDBConnectionTest extends TestCase {
             "      \"endIPInt\": 3630349567,"+
             "      \"observableType\": \"Address\""+
             "}";
-        try {
-            conn.removeAllVertices();
-            Map<String, Object> vert = conn.jsonVertToMap(new JSONObject(vertString));
-            String id = conn.addVertex(vert);
-            Map<String, Object> dbVert = conn.getVertByID(id);
-            assertEquals(vert, dbVert);
 
-            Map<String, Object> vertUpdate = conn.jsonVertToMap(new JSONObject(vertUpdatedString));
-            conn.updateVertex(id, vertUpdate);
-            Map<String, Object> dbVertUpdate = conn.getVertByID(id);
-            assertEquals(vertUpdate, dbVertUpdate);
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-        }
+        conn.removeAllVertices();
+        Map<String, Object> vert = conn.jsonVertToMap(new JSONObject(vertString));
+        String id = conn.addVertex(vert);
+        Map<String, Object> dbVert = conn.getVertByID(id);
+        assertEquals(vert, dbVert);
+
+        Map<String, Object> vertUpdate = conn.jsonVertToMap(new JSONObject(vertUpdatedString));
+        conn.updateVertex(id, vertUpdate);
+        Map<String, Object> dbVertUpdate = conn.getVertByID(id);
+        assertEquals(vertUpdate, dbVertUpdate);
     }
 
     public void testGetVertIDsByRelation() {
@@ -222,47 +222,143 @@ public class PostgresqlDBConnectionTest extends TestCase {
             "  ]"+
             "}";
 
+        JSONObject verts = new JSONObject(graphString).getJSONObject("vertices");
+        Map<String, Object> indicatorMap = conn.jsonVertToMap(verts.getJSONObject("Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb"));
+        String indicatorID = conn.addVertex(indicatorMap);
+        Map<String, Object> indicatorMapDB = conn.getVertByID(indicatorID);
+        assertEquals(indicatorMap, indicatorMapDB);
+
+        Map<String, Object> ttpMap = conn.jsonVertToMap(verts.getJSONObject("TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341"));
+        String ttpID = conn.addVertex(ttpMap);
+        Map<String, Object> ttpMapDB = conn.getVertByID(ttpID);
+        assertEquals(ttpMap, ttpMapDB);
+
+        Map<String, Object> coaMap = conn.jsonVertToMap(verts.getJSONObject("Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb"));
+        String coaID = conn.addVertex(coaMap);
+        Map<String, Object> coaMapDB = conn.getVertByID(coaID);
+        assertEquals(coaMap, coaMapDB);
+
+        conn.addEdge(ttpID, indicatorID, "IndicatedTTP");
+        conn.addEdge(coaID, indicatorID, "SuggestedCOA");
+
+        List<String> inVertIDs = conn.getInVertIDsByRelation(indicatorID, "IndicatedTTP");
+        assertEquals(inVertIDs.size(), 1);
+        assertEquals(inVertIDs.get(0), ttpID);
+
+        inVertIDs = conn.getInVertIDsByRelation(indicatorID, "SuggestedCOA");
+        assertEquals(inVertIDs.size(), 1);
+        assertEquals(inVertIDs.get(0), coaID);
+
+        List<String> vertIDs = conn.getVertIDsByRelation(indicatorID, "IndicatedTTP");
+        assertEquals(vertIDs.size(), 1);
+        ttpMapDB = conn.getVertByID(vertIDs.get(0));
+        assertEquals(ttpMap, ttpMapDB);
+
+        vertIDs = conn.getVertIDsByRelation(indicatorID, "SuggestedCOA");
+        assertEquals(vertIDs.size(), 1);
+        coaMapDB = conn.getVertByID(vertIDs.get(0));
+        assertEquals(coaMap, coaMapDB);
+    }
+
+    public void testConstraints() {
+        String addrRangeString =
+        "{" +
+        "      \"endIP\": \"216.98.188.255\"," +
+        "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:addressRange-33f72b4c-e6f2-4d82-88d4-2a7711ce7bfe\\\"><cybox:Title>AddressRange<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">CAIDA<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:addressRange-3630349312-3630349567\\\"><cybox:Description>216.98.188.0 through 216.98.188.255<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\" apply_condition=\\\"ANY\\\" condition=\\\"InclusiveBetween\\\" delimiter=\\\" - \\\">216.98.188.0 - 216.98.188.255<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
+        "      \"vertexType\": \"AddressRange\"," +
+        "      \"startIP\": \"216.98.188.0\"," +
+        "      \"startIPInt\": 3630349312," +
+        "      \"name\": \"216.98.188.0 - 216.98.188.255\"," +
+        "      \"description\": [\"216.98.188.0 through 216.98.188.255\"]," +
+        "      \"source\": [\"CAIDA\"]," +
+        "      \"endIPInt\": 3630349567," +
+        "      \"observableType\": \"Address\"" +
+        "}";
+
+        String ipString =
+        "{" +
+        "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:ip-cf1042ad-8f95-47e2-830d-4951f81f5241\\\"><cybox:Title>IP<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">LoginEvent<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:ip-3232238091\\\"><cybox:Description>192.168.10.11<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\">216.98.188.1<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
+        "      \"vertexType\": \"IP\"," +
+        "      \"ipInt\": 3630349313," +
+        "      \"name\": \"216.98.188.1\"," +
+        "      \"description\": [\"216.98.188.1\", \"Some other description.\"]," +
+        "      \"source\": [\"LoginEvent\", \"maxmind\"]," +
+        "      \"observableType\": \"Address\"" + 
+        "}";
+
         try {
-            JSONObject verts = new JSONObject(graphString).getJSONObject("vertices");
-            Map<String, Object> indicatorMap = conn.jsonVertToMap(verts.getJSONObject("Indicator-c304f71f-788d-46cb-919d-da1ca4c781bb"));
-            String indicatorID = conn.addVertex(indicatorMap);
-            Map<String, Object> indicatorMapDB = conn.getVertByID(indicatorID);
-            assertEquals(indicatorMap, indicatorMapDB);
+            Map<String, Object> addrRangeMap = conn.jsonVertToMap(new JSONObject(addrRangeString));
+            String addrRangeID = conn.addVertex(addrRangeMap);
+            assertEquals(addrRangeMap, conn.getVertByID(addrRangeID));
 
-            Map<String, Object> ttpMap = conn.jsonVertToMap(verts.getJSONObject("TTP-c7561b63-ab62-433e-a5c2-b330c1dcc341"));
-            String ttpID = conn.addVertex(ttpMap);
-            Map<String, Object> ttpMapDB = conn.getVertByID(ttpID);
-            assertEquals(ttpMap, ttpMapDB);
+            Map<String, Object> ipMap = conn.jsonVertToMap(new JSONObject(ipString));
+            String ipID = conn.addVertex(ipMap);
+            assertEquals(ipMap, conn.getVertByID(ipID));
 
-            Map<String, Object> coaMap = conn.jsonVertToMap(verts.getJSONObject("Course_Of_Action-ae6c9867-9433-481c-80e5-4672d92811bb"));
-            String coaID = conn.addVertex(coaMap);
-            Map<String, Object> coaMapDB = conn.getVertByID(coaID);
-            assertEquals(coaMap, coaMapDB);
+            conn.addEdge(ipID, addrRangeID, "Contained_Within");
 
-            conn.addEdge(ttpID, indicatorID, "IndicatedTTP");
-            conn.addEdge(coaID, indicatorID, "SuggestedCOA");
+            conn.addEdge(addrRangeID, ipID, "Contained_Within");
+            Map<String, Object> inEdges = conn.getInEdges(addrRangeID).get(0);
+            Map<String, Object> outEdges = conn.getOutEdges(ipID).get(0);
+            assertEquals(inEdges, outEdges);
 
-            List<String> inVertIDs = conn.getInVertIDsByRelation(indicatorID, "IndicatedTTP");
-            assertEquals(inVertIDs.size(), 1);
-            assertEquals(inVertIDs.get(0), ttpID);
+            List<DBConstraint> constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("vertexType", Condition.eq, "IP"));
+            constraints.add(conn.getConstraint("ipInt", Condition.eq, 3630349313L));
+            String vertID = conn.getVertIDsByConstraints(constraints).get(0);
+            Map<String, Object> vert = conn.getVertByID(vertID);
+            assertEquals(ipMap, vert);            
 
-            inVertIDs = conn.getInVertIDsByRelation(indicatorID, "SuggestedCOA");
-            assertEquals(inVertIDs.size(), 1);
-            assertEquals(inVertIDs.get(0), coaID);
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("startIPInt", Condition.gte, 3630349312L));
+            constraints.add(conn.getConstraint("endIPInt", Condition.lte, 3630349567L));
+            String id = conn.getVertIDsByConstraints(constraints).get(0);
+            vert = conn.getVertByID(id);
+            assertEquals(addrRangeMap, vert);            
 
-            List<String> vertIDs = conn.getVertIDsByRelation(indicatorID, "IndicatedTTP");
-            assertEquals(vertIDs.size(), 1);
-            ttpMapDB = conn.getVertByID(vertIDs.get(0));
-            assertEquals(ttpMap, ttpMapDB);
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("name", Condition.neq, "name"));
+            List<String> vertIDsList = conn.getVertIDsByConstraints(constraints);
+            assertEquals(vertIDsList.size(), 2);
 
-            vertIDs = conn.getVertIDsByRelation(indicatorID, "SuggestedCOA");
-            assertEquals(vertIDs.size(), 1);
-            coaMapDB = conn.getVertByID(vertIDs.get(0));
-            assertEquals(coaMap, coaMapDB);
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("source", Condition.contains, "maxmind"));
+            vertIDsList = conn.getVertIDsByConstraints(constraints);
+            assertEquals(vertIDsList.size(), 1);
+            assertEquals(ipMap, conn.getVertByID(vertIDsList.get(0)));
 
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("description", Condition.contains, "Some other description."));
+            vertIDsList = conn.getVertIDsByConstraints(constraints);
+            assertEquals(vertIDsList.size(), 1);
+            assertEquals(ipMap, conn.getVertByID(vertIDsList.get(0)));
+
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("sourceDocument", Condition.substring, "216.98.188.0 - 216.98.188.255"));
+            vertIDsList = conn.getVertIDsByConstraints(constraints);
+            assertEquals(vertIDsList.size(), 1);
+            assertEquals(addrRangeMap, conn.getVertByID(vertIDsList.get(0)));
+
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("sourceDocument", Condition.substring, "CAIDA"));
+            vertIDsList = conn.getVertIDsByRelation(ipID, "Contained_Within", constraints);
+            assertEquals(vertIDsList.size(), 1);
+            assertEquals(addrRangeMap, conn.getVertByID(vertIDsList.get(0)));
+
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("sourceDocument", Condition.substring, "LoginEvent"));
+            vertIDsList = conn.getOutVertIDsByRelation(addrRangeID, "Contained_Within", constraints);
+            assertEquals(vertIDsList.size(), 1);
+            assertEquals(ipMap, conn.getVertByID(vertIDsList.get(0)));
+
+            constraints = new ArrayList<DBConstraint>();
+            constraints.add(conn.getConstraint("sourceDocument", Condition.substring, "CAIDA"));
+            vertIDsList = conn.getInVertIDsByRelation(ipID, "Contained_Within", constraints);
+            assertEquals(vertIDsList.size(), 1);
+            assertEquals(addrRangeMap, conn.getVertByID(vertIDsList.get(0)));
         } catch (RuntimeException e) {
             e.printStackTrace();
-        }
+        } 
     }
 }
 

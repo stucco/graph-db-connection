@@ -12,7 +12,7 @@ public class PostgresqlDBConstraint extends DBConstraintBase {
 
     /**
      * Constructor
-     * @param property
+     * @param property 
      * @param condition
      * @param value
      */
@@ -23,15 +23,16 @@ public class PostgresqlDBConstraint extends DBConstraintBase {
     /**
      * Converts the conditional to the DB specific string type it needs
      */
-    public String condString(Condition c){
-        if(c == Condition.eq) return "=";
-        if(c == Condition.neq) return "<>";
-        if(c == Condition.gt) return ">";
-        if(c == Condition.gte) return ">=";
-        if(c == Condition.lt) return "<";
-        if(c == Condition.lte) return "<=";
-        if(c == Condition.contains) return "@>";
-        if(c == Condition.substring) return "LIKE";
+    public String condString(Condition c) {
+        if (c == Condition.eq) return "=";
+        if (c == Condition.neq) return "<>";
+        if (c == Condition.gt) return ">";
+        if (c == Condition.gte) return ">=";
+        if (c == Condition.lt) return "<";
+        if (c == Condition.lte) return "<=";
+        if (c == Condition.contains) return "@>";
+        if (c == Condition.substring) return "LIKE";
+        
         return null;
     }
 }

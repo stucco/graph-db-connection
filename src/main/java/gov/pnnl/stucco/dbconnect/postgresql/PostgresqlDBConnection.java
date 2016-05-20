@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.HashSet; 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Arrays; 
 import java.util.LinkedHashMap;
 import java.util.Collection;
 import java.util.Collections;
@@ -176,10 +176,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public String addVertex(Map<String, Object> properties) {
-        if (!properties.containsKey("name") || !properties.containsKey("vertexType")) {
-            String msg = String.format("cannot add vertex with missing or invalid vertex name or vertexType");
-            throw new IllegalArgumentException(msg);
-        }
+        sanityCheck("add vertex", properties, "name", "vertexType");
+
         String id = null;
         try {
             String sql = buildInsertSQL(properties.get("vertexType").toString(), properties);
@@ -273,9 +271,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public Map<String, Object> getVertByID(String id) {
-        if (id == null || id.isEmpty()) {
-            return null;
-        }
+        sanityCheck("get vert", id, "id");
+
         Map<String, Object> vertex = null;
         for (Object key : vertTables.keySet()) {
             String tableName = key.toString();
@@ -336,15 +333,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void addEdge(String inVertID, String outVertID, String relation) {
-        if (relation == null || relation.equals("") ) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid relation");
-        }
-        if (inVertID == null || inVertID.equals("") ) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid inVertID");
-        }
-        if (outVertID == null || outVertID.equals("")) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid outVertID");
-        } 
+        sanityCheck("add edge", inVertID, "inVertID");
+        sanityCheck("add edge", outVertID, "outVertID");
+        sanityCheck("add edge", relation, "relation");
        
         String query = new StringBuilder()
             .append("INSERT INTO Edges (relation, outVertID, inVertID) VALUES ('")
@@ -365,9 +356,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public List<Map<String, Object>> getOutEdges(String outVertID) {
-        if (outVertID == null || outVertID.equals("")) {
-            throw new IllegalArgumentException("cannot find edges with missing or invalid outVertID");
-        } 
+        sanityCheck("get edges", outVertID, "outVertID");
         
         StringBuilder query = new StringBuilder()
             .append("SELECT * FROM Edges WHERE outVertID = '")
@@ -386,9 +375,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public List<Map<String, Object>> getInEdges(String inVertID) {
-        if (inVertID == null || inVertID.equals("")) {
-            throw new IllegalArgumentException("cannot find edges with missing or invalid inVertID");
-        } 
+        sanityCheck("get edges", inVertID, "inVertID");
 
         StringBuilder query = new StringBuilder()
             .append("SELECT * FROM Edges WHERE inVertID = '")
@@ -436,18 +423,14 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
-     * @param v1 - vertex end point
+     * @param outVertID - vertex end point
      * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
     @Override
     public List<String> getInVertIDsByRelation(String outVertID, String relation) {
-        if (relation == null || relation.equals("") ) {
-            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
-        }
-        if (outVertID == null || outVertID.equals("") ) {
-            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
-        }
+        sanityCheck("get vert id", outVertID, "outVertID");
+        sanityCheck("get vert id", relation, "relation");
         
         String query = new StringBuilder()
             .append("SELECT inVertID FROM Edges WHERE relation = '")
@@ -456,7 +439,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             .append(outVertID)
             .append("';")
             .toString();
-        List<String> inVertIDsList = getVertIDsByRelation(query);
+        List<String> inVertIDsList = getVertIDs(query);
 
         return inVertIDsList;
     };
@@ -469,12 +452,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public List<String> getOutVertIDsByRelation(String inVertID, String relation) {
-        if (relation == null || relation.equals("") ) {
-            throw new IllegalArgumentException("cannot get edge with missing or invalid relation");
-        }
-        if (inVertID == null || inVertID.equals("") ) {
-            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
-        }
+        sanityCheck("get edge", inVertID, "inVertID");
+        sanityCheck("get edge", relation, "relation");
 
         String query = new StringBuilder()
             .append("SELECT outVertID FROM Edges WHERE relation = '")
@@ -483,7 +462,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             .append(inVertID)
             .append("';")
             .toString();
-        List<String> outVertIDsList = getVertIDsByRelation(query);
+        List<String> outVertIDsList = getVertIDs(query);
 
         return outVertIDsList;
     };
@@ -493,7 +472,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @param query - select Edge table query with some constraints
      * @return list of vert ids selected by query
      */
-    private List<String> getVertIDsByRelation(String query) {
+    private List<String> getVertIDs(String query) {
         List<String> vertIDs = new ArrayList<String>();
         try {
             ResultSet rs = statement.executeQuery(query);
@@ -517,12 +496,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public List<String> getVertIDsByRelation(String id, String relation) {
-        if (relation == null || relation.equals("") ) {
-            throw new IllegalArgumentException("cannot get vertID with missing or invalid relation");
-        }
-        if (id == null || id.equals("") ) {
-            throw new IllegalArgumentException("cannot get vertID with missing or invalid id");
-        }
+        sanityCheck("get vert id", id, "id");
+        sanityCheck("get vert id", relation, "relation");
 
         String query = new StringBuilder()
             .append("SELECT outVertID as vertID FROM Edges WHERE relation = '")
@@ -537,7 +512,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             .append("';")
             .toString();
 
-        List<String> vertIDs = getVertIDsByRelation(query);
+        List<String> vertIDs = getVertIDs(query);
 
         return vertIDs;
     };
@@ -551,34 +526,125 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @return list of vertex IDs
      */
     @Override
-    public List<String> getInVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
-        return null;
+    public List<String> getInVertIDsByRelation(String outVertID, String relation, List<DBConstraint> constraints) {
+        sanityCheck("get vert", outVertID, "vertID");
+        sanityCheck("get vert", relation, "relation");
+        sanityCheck(constraints);
+
+        List<String> vertIDs = new ArrayList<String>();
+        List<String> inVertIDs = getInVertIDsByRelation(outVertID, relation);
+        if (!inVertIDs.isEmpty()) {
+            String idIN = buildIDInQuery(inVertIDs);
+            String constraintsQuery = buildConstraintQuery(constraints);
+            List<String> columnList = getConstraintProperties(constraints);
+            for (Object table : vertTables.keySet()) {
+                String tableName = table.toString();
+                if (containsAllColumns(tableName, columnList)) {
+                    String query = new StringBuilder()
+                        .append("SELECT _id FROM ")
+                        .append(tableName)
+                        .append(constraintsQuery)
+                        .append(" AND ")
+                        .append(idIN)
+                        .append(";")
+                        .toString();   
+
+                    vertIDs.addAll(getVertIDs(query));
+                }
+            }
+        }
+
+        return vertIDs;
     };
     
     /**
      * Identify the vertices where their relationship type and direction leave the specified vertex
      * and where the found vertices match the following constraints
-     * @param v1 - vertex starting point
+     * @param vertID - vertex starting point
      * @param relation - the relationship type of the edge
      * @param constraints - list of constraint objects
      * @return list of vertex IDs
      */
     @Override
-    public List<String> getOutVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
-        return null;
+    public List<String> getOutVertIDsByRelation(String inVertID, String relation, List<DBConstraint> constraints) {
+        sanityCheck("get vert", inVertID, "vertID");
+        sanityCheck("get vert", relation, "relation");
+        sanityCheck(constraints);
+
+        List<String> vertIDs = new ArrayList<String>();
+        List<String> outVertIDs = getOutVertIDsByRelation(inVertID, relation);
+        if (!outVertIDs.isEmpty()) {
+            String idIN = buildIDInQuery(outVertIDs);
+            String constraintsQuery = buildConstraintQuery(constraints);
+            List<String> columnList = getConstraintProperties(constraints);
+            for (Object table : vertTables.keySet()) {
+                String tableName = table.toString();
+                if (containsAllColumns(tableName, columnList)) {
+                    String query = new StringBuilder()
+                        .append("SELECT _id FROM ")
+                        .append(tableName)
+                        .append(constraintsQuery)
+                        .append(" AND ")
+                        .append(idIN)
+                        .append(";")
+                        .toString();   
+
+                    vertIDs.addAll(getVertIDs(query));
+                }
+            }
+        }
+
+        return vertIDs;
     };
 
     /**
      * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
      * and where the found vertices match the following constraints
-     * @param v1 - vertex starting or ending point
+     * @param vertID - vertex starting or ending point
      * @param relation - the relationship type of the edge
      * @param constraints - list of constraint objects
      * @return list of vertex IDs
      */
     @Override
-    public List<String> getVertIDsByRelation(String v1, String relation, List<DBConstraint> constraints){
-        return null;
+    public List<String> getVertIDsByRelation(String vertID, String relation, List<DBConstraint> constraints) {
+        sanityCheck("get vert", vertID, "vertID");
+        sanityCheck("get vert", relation, "relation");
+        sanityCheck(constraints);
+
+        StringBuilder constraintsQuery = new StringBuilder()
+            .append(buildConstraintQuery(constraints))
+            .append(" AND (");
+        String delimiter = "";
+        List<String> vertIDs = getVertIDsByRelation(vertID, relation);
+        for (String _id : vertIDs) {
+            constraintsQuery
+                .append(delimiter)
+                .append("_id = '")
+                .append(_id)
+                .append("'");
+
+            delimiter = " OR ";
+        }
+        constraintsQuery.append(")");
+
+        vertIDs.clear();
+        List<String> columnList = getConstraintProperties(constraints);
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString();
+            if (containsAllColumns(tableName, columnList)) {
+                String query = new StringBuilder()
+                    .append("SELECT _id FROM ")
+                    .append(tableName)
+                    .append(constraintsQuery)
+                    .append(";")
+                    .toString();   
+
+                vertIDs.addAll(getVertIDs(query));
+            }
+        }
+
+
+        return vertIDs;
     };
     
     /**
@@ -587,9 +653,94 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @return list of vertex IDs
      */
     @Override
-    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints){
-        return null;
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints) {
+        sanityCheck(constraints);
+
+        //TODO: check if constraints contain vertexType to avoid searching all tables
+        String constraintsString = buildConstraintQuery(constraints);
+        List<String> columnList = getConstraintProperties(constraints);
+        List<String> vertIDs = new ArrayList<String>();
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString();
+            if (containsAllColumns(tableName, columnList)) {
+                String query = new StringBuilder()
+                    .append("SELECT _id FROM ")
+                    .append(tableName)
+                    .append(constraintsString)
+                    .append(";")
+                    .toString();   
+
+                vertIDs.addAll(getVertIDs(query));
+            }
+        }
+        
+        return vertIDs;
     };
+
+    private List<String> getConstraintProperties(List<DBConstraint> constraints) {
+        List<String> list = new ArrayList<String>();
+        for (DBConstraint constraint : constraints) {
+            list.add(constraint.getProp());
+        }
+
+        return list;
+    }
+
+    /**
+     * build portion of query like: " _id IN ('value1', 'value2', 'value3') "
+     * used for queries where id is part of a constraints
+     */
+    private String buildIDInQuery(List<String> idList) {
+        StringBuilder in = new StringBuilder(" _id IN ('");
+        String delimiter = "";
+        for (String id : idList) {
+            in
+                .append(id)
+                .append("'")
+                .append(delimiter);
+        }
+        in.append(")");
+
+        return in.toString();
+    }
+
+    /**
+     * build constrains posrtion (substring) of querty like: " WHERE property = 'value' AND _id != 'some-id-value' "
+     */
+    private String buildConstraintQuery(List<DBConstraint> constraints) {
+        StringBuilder constrQuery = new StringBuilder(" WHERE ");
+        String delimiter = "";
+        for (int i = 0; i < constraints.size(); i++) {
+            DBConstraint constraint = constraints.get(i);
+            String cond = constraint.condString(constraint.getCond());
+            String key = constraint.getProp();
+            Object value = constraint.getVal();
+
+            constrQuery
+                .append(delimiter)
+                .append(key)
+                .append(" ")
+                .append(cond)
+                .append(" ")
+                .append(value);
+            delimiter = " AND ";
+        }
+
+        return constrQuery.toString();
+    }
+
+    private boolean containsAllColumns(String tableName, List<String> columnNames) {
+        boolean contains = true;
+        JSONObject table = vertTables.getJSONObject(tableName);
+        for (String columnName : columnNames) {
+            if (!table.has(columnName)) {
+                contains = false;
+                break;
+            }
+        }
+
+        return contains;
+    } 
     
     /**
      * Given two vertices and a relation, remove the edge
@@ -599,15 +750,10 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void removeEdgeByRelation(String inVertID, String outVertID, String relation) {
-        if (relation == null || relation.equals("") ) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid relation");
-        }
-        if (inVertID == null || inVertID.equals("") ) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid inVertID");
-        }
-        if (outVertID == null || outVertID.equals("")) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid outVertID");
-        }
+        sanityCheck("remove edge", inVertID, "inVertID");
+        sanityCheck("remove edge", outVertID, "outVertID");
+        sanityCheck("remove edge", relation, "relation");
+        
         String query = new StringBuilder()
             .append("DELETE FROM Edges WHERE relation = '")
             .append(relation)
@@ -627,9 +773,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void removeVertByID(String id) {
-        if (id == null || id.equals("")) {
-            throw new IllegalArgumentException("cannot find vert with missing or invalid id");
-        } 
+        sanityCheck("remove vertex", id, "id");
+       
         StringBuilder querySuffix = new StringBuilder()
             .append(" WHERE _id = '")
             .append(id)
@@ -667,6 +812,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void updateVertex(String id, Map<String, Object> properties) {
+        sanityCheck("update vertex", properties, "name", "vertexType");
+        
         String tableName = properties.get("vertexType").toString();
         String delimiter = "";
         StringBuilder query = new StringBuilder()
@@ -832,15 +979,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public int getEdgeCountByRelation(String inVertID, String outVertID, String relation) {
-        if (relation == null || relation.equals("") ) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid relation");
-        }
-        if (inVertID == null || inVertID.equals("") ) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid inVertID");
-        }
-        if (outVertID == null || outVertID.equals("")) {
-            throw new IllegalArgumentException("cannot add edge with missing or invalid outVertID");
-        } 
+        sanityCheck("get edge count", relation, "relation");
+        sanityCheck("get edge count", inVertID, "inVertID");
+        sanityCheck("get edge count", outVertID, "outVertID");
 
         int count = 0;
         StringBuilder query = new StringBuilder()
@@ -862,7 +1003,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             throw new StuccoDBException("failed to count rows in Edge table");
         }
 
-        return 0;
+        return count;
     };
     
     /**
@@ -875,12 +1016,59 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     public DBConstraint getConstraint(String property, Condition condition, Object value) {
         if (condition == Condition.substring) {
             value = new StringBuilder()
-                .append("%")
+                .append("'%")
                 .append(value.toString())
-                .append("%")
+                .append("%'")
+                .toString();
+        } else if (condition == Condition.contains) {
+            value = new StringBuilder()
+                .append("ARRAY['")
+                .append(value.toString())
+                .append("']")
+                .toString();
+        } else {
+            value = new StringBuilder()
+                .append("'")
+                .append(value.toString())
+                .append("'")
                 .toString();
         }
 
         return new PostgresqlDBConstraint(property, condition, value);
     };
+
+    /**
+     * argument sanity check for null or empty string
+     * @param action - goal of function, that received this argument 
+     * @param argValue - argument value
+     * @param argName - argument name for descriptive exception message
+     */
+    private static void sanityCheck(String action, String argValue, String argName) throws IllegalArgumentException {
+        if (argValue == null || argValue.isEmpty()) {
+            throw new IllegalArgumentException("cannot " + action + " with missing or invalid " + argName);
+        }
+    }
+
+    /**
+     * argument sanity check for null or empty string
+     * @param action - goal of function, that received this argument 
+     * @param properties - map of properties and property values
+     * @param propertyNames - property names to perform sanity check on
+     */
+    private static void sanityCheck(String action, Map<String, Object> properties, String... propertyNames) {
+        for (String name : propertyNames) {
+            if (!properties.containsKey(name)) {
+                throw new IllegalArgumentException("cannot " + action + " with missing or invalid " + name);
+            }
+        }
+    }
+
+    /**
+     * sanity check for passed non instantiated list
+     */
+    private static void sanityCheck(List list) {
+        if (list == null) {
+            throw new NullPointerException();
+        }
+    }
 }
