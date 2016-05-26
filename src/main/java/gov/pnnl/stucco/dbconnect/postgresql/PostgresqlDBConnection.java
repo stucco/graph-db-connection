@@ -159,12 +159,37 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     };
 
     /**
-     * Builds the index for a set of properties per their specification
-     * @param indexConfig
+     * Builds the index for full text search of sourceDocument
+     * @param indexConfig - is not required for postgresql, since it is creating full-text search only
+     * and it is for sourceDocument only
      * @throws StuccoDBException 
      */
     @Override
-    public void buildIndex(String indexConfig) throws StuccoDBException {};
+    public void buildIndex(String filePath) throws StuccoDBException {
+        for (Object table : vertTables.keySet()) {
+            try {
+                String tableName = table.toString();
+                //creating column for tsvector (tsv)
+                String query = buildString("ALTER TABLE ", tableName, " ADD COLUMN tsv tsvector;");
+                statement.executeUpdate(query);
+                query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(sourceDocument, ' '));");
+                statement.executeUpdate(query);
+                //setting index on tsv
+                query = buildString("CREATE INDEX tsv_idx ON ", tableName, " USING gin('english', tsv);");
+                statement.executeUpdate(query);
+                //creating function and a trigger to update tsv every time sourceDocument is updated
+                query = "CREATE FUNCTION search_trigger() RETURNS trigger AS $$ " +
+                    "begin " +
+                        "new.tsv := to_tsvector(coalesce(new.sourceDocument, ' ')); " +
+                        "return new; " +
+                    "end " +
+                    "$$ LANGUAGE plpgsql;";
+                statement.executeUpdate(query);
+                query = "CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON sourceDocument FOR EACH ROW EXECUTE PROCEDURE search_trigger();";
+                statement.executeUpdate(query);
+            } catch (SQLException e) {}
+        }
+    };
 
 
     /**
