@@ -33,9 +33,8 @@ public class PostgresqlDBConnectionFactory extends DBConnectionFactory {
      * @return
      */
     @Override
-    public DBConnectionIndexerInterface getDBConnectionIndexer() {
-        return null;        
-    //    return new OrientDBConnection(configuration);
+    public DBConnectionIndexerInterface getDBConnectionIndexer() {       
+        return new PostgresqlDBConnection(configuration);
     }
 
     /**
@@ -43,7 +42,6 @@ public class PostgresqlDBConnectionFactory extends DBConnectionFactory {
      */
     @Override
     public DBConnectionTestInterface getDBConnectionTestInterface() {
-        System.out.println("config = " + configuration);
         return new PostgresqlDBConnection(configuration);
     }
 

@@ -13,10 +13,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Array;
 import java.sql.ResultSetMetaData;
-
+ 
 import java.io.PrintWriter; 
 import java.io.StringWriter;
 import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -32,7 +37,9 @@ import java.util.Collections;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.math.NumberUtils;
 
-import org.json.*;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,17 +83,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     public void open() {
         try { 
             //PostgreSQL connecting url has following form: jdbc:postgresql://hostname:port/database
-            StringBuilder sb = new StringBuilder();
-            sb.append("jdbc:postgresql://");
-            sb.append(configuration.get("hostname").toString());
-            sb.append(":");
-            sb.append(configuration.get("port").toString());
-            sb.append("/");
-            sb.append(configuration.get("database").toString());
-            String url = sb.toString();
-        //    String username = configuration.get("username").toString();
-        //    String password = configuration.get("password").toString();
-            connection = DriverManager.getConnection(url, null, null);
+            String hostname = configuration.get("hostname").toString();
+            String port = configuration.get("port").toString();
+            String dbName = configuration.get("database").toString();
+            String url = buildString("jdbc:postgresql://", hostname, ":", port, "/", dbName);
+            String username = (configuration.containsKey("username")) ? configuration.get("username").toString() : null;
+            String password = (configuration.containsKey("password")) ? configuration.get("password").toString() : null;
+            connection = DriverManager.getConnection(url, username, password);
             statement = connection.createStatement();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
@@ -126,22 +129,17 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     private String buildCreateTableSQL(String tableName, JSONObject table) {
         String delimiter = "";
-        StringBuilder sql = new StringBuilder("CREATE TABLE IF NOT EXISTS ");
-        sql.append(tableName);
-        sql.append(" (_id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE, ");
+        String query = buildString("CREATE TABLE IF NOT EXISTS ", tableName, " (_id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE, ");
         for (String columnName : columnOrder) {
             if (table.has(columnName)) {
-                sql.append(delimiter);
                 String constraint = table.getJSONObject(columnName).getString("constraint");
-                sql.append(columnName);
-                sql.append(" ");
-                sql.append(constraint);
+                query = buildString(query, delimiter, columnName, " ", constraint);
                 delimiter = ", ";
             }
         }
-        sql.append(");");
+        query = buildString(query, ");");
         
-        return sql.toString();
+        return query;
     }
 
     /**
@@ -206,7 +204,6 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         StringBuilder valuesSQL = new StringBuilder();
         for (String propertyName : properties.keySet()) {
             propertiesSQL.append(delimiter);
-            valuesSQL.append(delimiter);
             propertiesSQL.append(propertyName);
             JSONObject propertyConstraint = table.getJSONObject(propertyName);
             String value;
@@ -214,33 +211,24 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 case "array":
                     List<String> set = (List<String>) properties.get(propertyName);
                     value = buildArrayString(set);
-                    valuesSQL.append(value);
                     break;
                 case "bigint":
                     value = properties.get(propertyName).toString();
-                    valuesSQL.append(value);
                     break;
                 default:
-                    value = properties.get(propertyName).toString();
-                    valuesSQL.append("'");
-                    valuesSQL.append(value);
-                    valuesSQL.append("'");
+                    value = buildString("'", properties.get(propertyName).toString(), "'");
                     break;
 
             }
+            valuesSQL
+                .append(delimiter)
+                .append(value);
             delimiter = ", ";
         }
 
-        StringBuilder sql = new StringBuilder("INSERT INTO ")
-            .append(tableName)
-            .append(" (")
-            .append(propertiesSQL)
-            .append(") ")
-            .append("VALUES (")
-            .append(valuesSQL)
-            .append(");");
+        String query = buildString("INSERT INTO ", tableName, " (", propertiesSQL, ") ", "VALUES (", valuesSQL, ");");
 
-        return sql.toString();
+        return query;
     }
 
     /**
@@ -253,10 +241,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         String delimiter = "";
         StringBuilder sb = new StringBuilder("'{");
         for (String value : list) {
-            sb.append(delimiter);
-            sb.append("\"");
-            sb.append(value);
-            sb.append("\"");
+            sb.append(buildString(delimiter, "\"", value, "\""));
             delimiter = ", ";
         }
         sb.append("}'");
@@ -276,13 +261,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         Map<String, Object> vertex = null;
         for (Object key : vertTables.keySet()) {
             String tableName = key.toString();
-            StringBuilder sql = new StringBuilder("SELECT * FROM ")
-                .append(tableName)
-                .append(" WHERE _id = '")
-                .append(id)
-                .append("';");
+            String query = buildString("SELECT * FROM ", tableName, " WHERE _id = '", id, "';");
             try {
-                ResultSet rs = statement.executeQuery(sql.toString());
+                ResultSet rs = statement.executeQuery(query);
                 if (rs.next()) {
                     vertex = convertResultSetToMap(tableName, rs);
                     break;
@@ -337,15 +318,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("add edge", outVertID, "outVertID");
         sanityCheck("add edge", relation, "relation");
        
-        String query = new StringBuilder()
-            .append("INSERT INTO Edges (relation, outVertID, inVertID) VALUES ('")
-            .append(relation)
-            .append("', '")
-            .append(outVertID)
-            .append("', '")
-            .append(inVertID)
-            .append("');")
-            .toString();
+        String query = buildString("INSERT INTO Edges (relation, outVertID, inVertID) VALUES ('", relation, "', '", outVertID, "', '", inVertID, "');");
         executeSQLQuery(query);   
     };
 
@@ -358,12 +331,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     public List<Map<String, Object>> getOutEdges(String outVertID) {
         sanityCheck("get edges", outVertID, "outVertID");
         
-        StringBuilder query = new StringBuilder()
-            .append("SELECT * FROM Edges WHERE outVertID = '")
-            .append(outVertID)
-            .append("';");
-
-        List<Map<String, Object>> outEdges = getEdges(query.toString());
+        String query = buildString("SELECT * FROM Edges WHERE outVertID = '", outVertID, "';");
+        List<Map<String, Object>> outEdges = getEdges(query);
 
         return outEdges;
     };
@@ -377,12 +346,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     public List<Map<String, Object>> getInEdges(String inVertID) {
         sanityCheck("get edges", inVertID, "inVertID");
 
-        StringBuilder query = new StringBuilder()
-            .append("SELECT * FROM Edges WHERE inVertID = '")
-            .append(inVertID)
-            .append("';");
-
-        List<Map<String, Object>> inEdges = getEdges(query.toString());
+        String query = buildString("SELECT * FROM Edges WHERE inVertID = '", inVertID, "';");
+        List<Map<String, Object>> inEdges = getEdges(query);
 
         return inEdges;
     }
@@ -432,13 +397,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get vert id", outVertID, "outVertID");
         sanityCheck("get vert id", relation, "relation");
         
-        String query = new StringBuilder()
-            .append("SELECT inVertID FROM Edges WHERE relation = '")
-            .append(relation)
-            .append("' AND outVertID = '")
-            .append(outVertID)
-            .append("';")
-            .toString();
+        String query = buildString("SELECT inVertID AS vertID FROM Edges WHERE relation = '", relation, "' AND outVertID = '", outVertID, "';");
         List<String> inVertIDsList = getVertIDs(query);
 
         return inVertIDsList;
@@ -455,13 +414,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edge", inVertID, "inVertID");
         sanityCheck("get edge", relation, "relation");
 
-        String query = new StringBuilder()
-            .append("SELECT outVertID FROM Edges WHERE relation = '")
-            .append(relation)
-            .append("' AND inVertID = '")
-            .append(inVertID)
-            .append("';")
-            .toString();
+        String query = buildString("SELECT outVertID AS vertID FROM Edges WHERE relation = '", relation, "' AND inVertID = '", inVertID, "';");
         List<String> outVertIDsList = getVertIDs(query);
 
         return outVertIDsList;
@@ -477,7 +430,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         try {
             ResultSet rs = statement.executeQuery(query);
             while (rs.next()) {
-                vertIDs.add(rs.getString(1));
+                vertIDs.add(rs.getString("vertID"));
             }
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
@@ -490,28 +443,18 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     /**
      * Identify all vertices where their relationship type and direction either enter or leave the specified vertex
-     * @param id - vertex starting or ending point
+     * @param vertID - vertex starting or ending point
      * @param relation - the relationship type of the edge
      * @return list of vertex IDs
      */
     @Override
-    public List<String> getVertIDsByRelation(String id, String relation) {
-        sanityCheck("get vert id", id, "id");
+    public List<String> getVertIDsByRelation(String vertID, String relation) {
+        sanityCheck("get vert id", vertID, "vertID");
         sanityCheck("get vert id", relation, "relation");
 
-        String query = new StringBuilder()
-            .append("SELECT outVertID as vertID FROM Edges WHERE relation = '")
-            .append(relation)
-            .append("' AND inVertID = '")
-            .append(id)
-            .append("' UNION ")
-            .append("SELECT inVertID as vertID FROM Edges WHERE relation = '")
-            .append(relation)
-            .append("' and outVertID = '")
-            .append(id)
-            .append("';")
-            .toString();
-
+        String query = buildString("SELECT outVertID as vertID FROM Edges WHERE relation = '", relation, "' AND inVertID = '", vertID, 
+                                    "' UNION ",
+                                    "SELECT inVertID as vertID FROM Edges WHERE relation = '", relation, "' and outVertID = '", vertID, "';");
         List<String> vertIDs = getVertIDs(query);
 
         return vertIDs;
@@ -534,21 +477,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         List<String> vertIDs = new ArrayList<String>();
         List<String> inVertIDs = getInVertIDsByRelation(outVertID, relation);
         if (!inVertIDs.isEmpty()) {
-            String idIN = buildIDInQuery(inVertIDs);
-            String constraintsQuery = buildConstraintQuery(constraints);
+            String idList = buildIDListSubquery(inVertIDs);
+            String constraintsList = buildConstraintsSubquery(constraints);
             List<String> columnList = getConstraintProperties(constraints);
             for (Object table : vertTables.keySet()) {
                 String tableName = table.toString();
                 if (containsAllColumns(tableName, columnList)) {
-                    String query = new StringBuilder()
-                        .append("SELECT _id FROM ")
-                        .append(tableName)
-                        .append(constraintsQuery)
-                        .append(" AND ")
-                        .append(idIN)
-                        .append(";")
-                        .toString();   
-
+                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " AND _id IN (", idList, ");");
                     vertIDs.addAll(getVertIDs(query));
                 }
             }
@@ -574,21 +509,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         List<String> vertIDs = new ArrayList<String>();
         List<String> outVertIDs = getOutVertIDsByRelation(inVertID, relation);
         if (!outVertIDs.isEmpty()) {
-            String idIN = buildIDInQuery(outVertIDs);
-            String constraintsQuery = buildConstraintQuery(constraints);
+            String idList = buildIDListSubquery(outVertIDs);
+            String constraintsList = buildConstraintsSubquery(constraints);
             List<String> columnList = getConstraintProperties(constraints);
             for (Object table : vertTables.keySet()) {
                 String tableName = table.toString();
                 if (containsAllColumns(tableName, columnList)) {
-                    String query = new StringBuilder()
-                        .append("SELECT _id FROM ")
-                        .append(tableName)
-                        .append(constraintsQuery)
-                        .append(" AND ")
-                        .append(idIN)
-                        .append(";")
-                        .toString();   
-
+                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE _id IN(", idList, ") AND ", constraintsList, ";");
                     vertIDs.addAll(getVertIDs(query));
                 }
             }
@@ -611,34 +538,16 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get vert", relation, "relation");
         sanityCheck(constraints);
 
-        StringBuilder constraintsQuery = new StringBuilder()
-            .append(buildConstraintQuery(constraints))
-            .append(" AND (");
-        String delimiter = "";
         List<String> vertIDs = getVertIDsByRelation(vertID, relation);
-        for (String _id : vertIDs) {
-            constraintsQuery
-                .append(delimiter)
-                .append("_id = '")
-                .append(_id)
-                .append("'");
-
-            delimiter = " OR ";
-        }
-        constraintsQuery.append(")");
-
+        String idList = buildIDListSubquery(vertIDs);
+        String constraintsList = buildConstraintsSubquery(constraints);
+        
         vertIDs.clear();
         List<String> columnList = getConstraintProperties(constraints);
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
             if (containsAllColumns(tableName, columnList)) {
-                String query = new StringBuilder()
-                    .append("SELECT _id FROM ")
-                    .append(tableName)
-                    .append(constraintsQuery)
-                    .append(";")
-                    .toString();   
-
+                String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE _id IN(", idList, ") AND ", constraintsList, ";");
                 vertIDs.addAll(getVertIDs(query));
             }
         }
@@ -657,19 +566,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck(constraints);
 
         //TODO: check if constraints contain vertexType to avoid searching all tables
-        String constraintsString = buildConstraintQuery(constraints);
+        String constraintsList = buildConstraintsSubquery(constraints);
         List<String> columnList = getConstraintProperties(constraints);
         List<String> vertIDs = new ArrayList<String>();
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
             if (containsAllColumns(tableName, columnList)) {
-                String query = new StringBuilder()
-                    .append("SELECT _id FROM ")
-                    .append(tableName)
-                    .append(constraintsString)
-                    .append(";")
-                    .toString();   
-
+                String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE ", constraintsList, ";");
                 vertIDs.addAll(getVertIDs(query));
             }
         }
@@ -690,54 +593,39 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * build portion of query like: " _id IN ('value1', 'value2', 'value3') "
      * used for queries where id is part of a constraints
      */
-    private String buildIDInQuery(List<String> idList) {
-        StringBuilder in = new StringBuilder(" _id IN ('");
+    private String buildIDListSubquery(List<String> list) {
+        StringBuilder idList = new StringBuilder();
         String delimiter = "";
-        for (String id : idList) {
-            in
-                .append(id)
-                .append("'")
-                .append(delimiter);
+        for (String id : list) {
+            idList
+                .append(buildString(delimiter, "'", id, "'"));
+            delimiter = ", ";
         }
-        in.append(")");
 
-        return in.toString();
+        return idList.toString();
     }
 
     /**
      * build constrains posrtion (substring) of querty like: " WHERE property = 'value' AND _id != 'some-id-value' "
      */
-    private String buildConstraintQuery(List<DBConstraint> constraints) {
-        StringBuilder constrQuery = new StringBuilder(" WHERE ");
+    private String buildConstraintsSubquery(List<DBConstraint> constraints) {
+        StringBuilder constraintsList = new StringBuilder();
         String delimiter = "";
         for (int i = 0; i < constraints.size(); i++) {
             DBConstraint constraint = constraints.get(i);
             String cond = constraint.condString(constraint.getCond());
             String key = constraint.getProp();
             Object value = constraint.getVal();
-
-            constrQuery
-                .append(delimiter)
-                .append(key)
-                .append(" ")
-                .append(cond)
-                .append(" ")
-                .append(value);
+            constraintsList.append(buildString(delimiter, key, " ", cond, " ", value));
             delimiter = " AND ";
         }
 
-        return constrQuery.toString();
+        return constraintsList.toString();
     }
 
     private boolean containsAllColumns(String tableName, List<String> columnNames) {
-        boolean contains = true;
-        JSONObject table = vertTables.getJSONObject(tableName);
-        for (String columnName : columnNames) {
-            if (!table.has(columnName)) {
-                contains = false;
-                break;
-            }
-        }
+        Set tableColumns = vertTables.getJSONObject(tableName).keySet();
+        boolean contains = tableColumns.containsAll(columnNames); 
 
         return contains;
     } 
@@ -754,111 +642,73 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("remove edge", outVertID, "outVertID");
         sanityCheck("remove edge", relation, "relation");
         
-        String query = new StringBuilder()
-            .append("DELETE FROM Edges WHERE relation = '")
-            .append(relation)
-            .append("' AND outVertID = '")
-            .append(outVertID)
-            .append("' AND inVertID = '")
-            .append(inVertID)
-            .append("';")
-            .toString();
+        String query = buildString("DELETE FROM Edges WHERE relation = '", relation, "' AND outVertID = '", outVertID, "' AND inVertID = '", inVertID, "';");
         executeSQLQuery(query);
     };
 
     /**
      * Given a specific vertex remove it from the DB
      * (Note any edges connected to it will also be removed)
-     * @param id - vertex ID
+     * @param vertID - vertex ID
      */
     @Override
-    public void removeVertByID(String id) {
-        sanityCheck("remove vertex", id, "id");
-       
-        StringBuilder querySuffix = new StringBuilder()
-            .append(" WHERE _id = '")
-            .append(id)
-            .append("';");
+    public void removeVertByID(String vertID) {
+        sanityCheck("remove vertex", vertID, "vertID");
+
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
-            StringBuilder query = new StringBuilder("DELETE FROM ")
-                .append(tableName)
-                .append(querySuffix);
-            boolean success = executeSQLQuery(query.toString());
+            String query = buildString("DELETE FROM ", tableName, " WHERE _id = '", vertID, "';");
+            boolean success = executeSQLQuery(query);
             if (success) {
-                removeEdgeByVertID(id);
+                removeEdgeByVertID(vertID);
                 break;
             }
         }
     };
 
     /**
-     * remove edge if it contains outVertID or inVertID matching id
+     * remove edge if it contains outVertID or inVertID matching vertID
      */
-    private void removeEdgeByVertID(String id) {
-        StringBuilder query = new StringBuilder()
-            .append("DELETE FROM Edges WHERE outVertID = '")
-            .append(id)
-            .append("' OR inVertID = '")
-            .append(id)
-            .append("';");
+    private void removeEdgeByVertID(String vertID) {
+        String query = buildString("DELETE FROM Edges WHERE outVertID = '", vertID, "' OR inVertID = '", vertID, "';");
         executeSQLQuery(query.toString());
     }
     
     /**
      * Replaces current vertex's property map with a different one
-     * @param id - vertex that will be changed
+     * @param vertID - vertex that will be changed
      * @param properties - property map with different contents, complete replacement of current content
      */
     @Override
-    public void updateVertex(String id, Map<String, Object> properties) {
+    public void updateVertex(String vertID, Map<String, Object> properties) {
         sanityCheck("update vertex", properties, "name", "vertexType");
         
-        String tableName = properties.get("vertexType").toString();
         String delimiter = "";
-        StringBuilder query = new StringBuilder()
-            .append("UPDATE ")
-            .append(tableName)
-            .append(" SET ");
+        StringBuilder updates = new StringBuilder();
         for (String property : properties.keySet()) {
-            Object value = properties.get(property);
-
-            query
-                .append(delimiter)
-                .append(property)
-                .append(" = ")
-                .append(convertValueToString(value));
+            String value = normalizeValue(properties.get(property));
+            updates.append(buildString(delimiter, property, " = ", value));
             delimiter = ", ";
         }
-        query
-            .append(" WHERE _id = '")
-            .append(id)
-            .append("';");
+        String tableName = properties.get("vertexType").toString();
+        String query = buildString("UPDATE ", tableName, " SET ", updates, " WHERE _id = '", vertID, "';");
 
-        executeSQLQuery(query.toString());
+        executeSQLQuery(query);
     };
 
      /**
      * inserts this properties new value into the specified vertex ID and key
-     * @param id
+     * @param vertID
      * @param key
      * @param newValue - All multi-value types will be Expected to be of type SET or SINGLE
      */
     @Override
-    protected void setPropertyInDB(String id, String key, Object newValue) {
-        StringBuilder querySuffix = new StringBuilder()
-            .append(" SET ")
-            .append(key)
-            .append(" = ")
-            .append(convertValueToString(newValue))
-            .append(";");
+    protected void setPropertyInDB(String vertID, String key, Object newValue) {
+        String value = normalizeValue(newValue);
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
-            StringBuilder query = new StringBuilder()
-                .append("UPDATE ")
-                .append(tableName)
-                .append(querySuffix);
-            boolean success = executeSQLQuery(query.toString());
+            String query = buildString("UPDATE ", tableName, " SET ", key, " = ", value, ";");
+            boolean success = executeSQLQuery(query);
             if (success) {
                 break;
             }
@@ -868,16 +718,12 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     /**
      * convert value to string, format acceptable by SQL query according to db constraints
      */
-    private static String convertValueToString(Object value) {
+    private static String normalizeValue(Object value) {
         String returnValue = null;
         if (value instanceof Collection) {
             returnValue = buildArrayString((List)value);
         } else {
-            returnValue = new StringBuilder()
-                .append("'")
-                .append(value.toString())
-                .append("'")
-                .toString();
+            returnValue = buildString("'", value, "'");
         }
 
         return returnValue;
@@ -889,8 +735,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     @Override
     public void removeAllVertices() {
         //removing content of vert tables 
-        for (Object tableName : vertTables.keySet()) {
-            String query = String.format("DELETE FROM %s;", tableName.toString());
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString(); 
+            String query = buildString("DELETE FROM ", tableName, ";");
             executeSQLQuery(query);
         }
         //removing content of edge table
@@ -918,13 +765,121 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * load db state from the specified file
      */
     @Override
-    public void loadState(String filePath){};
+    public void loadState(String filePath) {
+        try {
+            InputStream is = new FileInputStream(filePath);
+            String textContents = IOUtils.toString(is);
+            is.close();
+
+            JSONObject contents = new JSONObject(textContents);
+            JSONObject vertsJSON = contents.getJSONObject("vertices");
+            JSONArray edgesJSON = contents.getJSONArray("edges");
+            //add vertices
+            for(Object id : vertsJSON.keySet()) {
+                JSONObject jsonVert = vertsJSON.getJSONObject(id.toString());
+                String description = jsonVert.optString("description");
+                if (description != null && !description.isEmpty()) {
+                    //This is kind of an odd workaround, to prevent ui from treating, eg, "URI: www.blah.com | Type: URL |" as a URL instead of a string.
+                    //TODO: this is really a problem in the UI, as far as we care it's still just a string either way.
+                    jsonVert.put("description", " " + description);
+                } else {
+                    //ui assumes everything has a description, this is a workaround to avoid having empty text in various places.
+                    jsonVert.put("description", jsonVert.optString("name"));
+                }
+                Map<String, Object> vert = jsonVertToMap(jsonVert);
+                addVertex(vert);
+            //    addVertToIndex(vert, id.toString());
+            }
+            //add edges.
+            for (int i = 0; i < edgesJSON.length(); i++) {
+                JSONObject edge = edgesJSON.getJSONObject(i);
+                try {
+                    String inVertID = edge.getString("inVertID");
+                    String outVertID = edge.getString("outVertID");
+                    String relation = edge.getString("relation");
+                    int matchingEdgeCount = getEdgeCountByRelation(inVertID, outVertID, relation);
+                    if (matchingEdgeCount == 0) {
+                        addEdge(inVertID, outVertID, relation); 
+                    }
+                } catch (JSONException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (IllegalArgumentException e) {
+                    // TODO Auto-generated catch block
+                    System.err.println("error when loading edge: " + edge);
+                    e.printStackTrace();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    };
 
     /**
      * save db state to the specified file
      */
     @Override
-    public void saveState(String filePath){};
+    public void saveState(String filePath) {
+        try {
+            OutputStream os = new FileOutputStream(filePath);
+            PrintStream printStream = new PrintStream(os);
+
+            JSONObject vertsJSON = getAllVertices();
+            JSONArray edgesJSON = getAllEdges();
+
+            JSONObject contents = new JSONObject();
+            contents.put("vertices", vertsJSON);
+            contents.put("edges", edgesJSON);
+
+            printStream.print(contents.toString(2));
+            printStream.close();
+            os.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    };
+
+    /**
+     * return all vertices, that are currently in DB
+     */
+    private JSONObject getAllVertices() {
+        JSONObject vertices = new JSONObject();
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString();
+            JSONObject tableContent = vertTables.getJSONObject(tableName);
+            String query = buildString("SELECT * FROM ", tableName, ";");
+            try {
+                ResultSet rs = statement.executeQuery(query);
+                while (rs.next()) {
+                    Map<String, Object> vert = convertResultSetToMap(tableName, rs);
+                    JSONObject jsonVert = new JSONObject();
+                    for (String key : vert.keySet()) {
+                        jsonVert.put(key, vert.get(key));
+                    }
+                    vertices.put(rs.getString("_id"), jsonVert);
+                }
+            } catch (SQLException e) {
+                logger.warn(e.getLocalizedMessage());
+                logger.warn(getStackTrace(e));
+                throw new StuccoDBException("failed to select all vertices from DB");
+            }
+        }
+
+        return vertices;
+    }
+
+    /**
+     * return all edges, that are currently in DB
+     */
+    private JSONArray getAllEdges() {
+        JSONArray edgesJson = new JSONArray();
+        List<Map<String, Object>> edges = getEdges("SELECT * FROM Edges;");
+        for (Map<String, Object> edge : edges) {
+            edgesJson.put(new JSONObject(edge));
+        }
+       
+       return edgesJson;
+    }
 
     /**
      * gets the number of vertices in the graph; aka number of rows in all vertex tables in the database
@@ -984,14 +939,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edge count", outVertID, "outVertID");
 
         int count = 0;
-        StringBuilder query = new StringBuilder()
-            .append("SELECT COUNT(*) FROM Edges WHERE relation = '")
-            .append(relation)
-            .append("' AND outVertID = '")
-            .append(outVertID)
-            .append("' AND inVertID = '")
-            .append(inVertID)
-            .append("';");
+        String query = buildString("SELECT COUNT(*) FROM Edges WHERE relation = '", relation, "' AND outVertID = '", outVertID, "' AND inVertID = '", inVertID, "';");
         try {
             ResultSet rs = statement.executeQuery(query.toString());
             if (rs.next()) {
@@ -1007,7 +955,19 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     };
     
     /**
-     * 
+     * concatenates multiple substrings 
+     */
+    private static String buildString(Object... substrings) {
+        StringBuilder str = new StringBuilder();
+        for (Object substring : substrings) {
+            str.append(substring);
+        }
+
+        return str.toString();
+    }
+
+    /**
+     * convert constraint value to query accepted format
      * @param property name
      * @param condition 
      * @param value
@@ -1015,23 +975,11 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     @Override
     public DBConstraint getConstraint(String property, Condition condition, Object value) {
         if (condition == Condition.substring) {
-            value = new StringBuilder()
-                .append("'%")
-                .append(value.toString())
-                .append("%'")
-                .toString();
+            value = buildString("'%", value, "%'");
         } else if (condition == Condition.contains) {
-            value = new StringBuilder()
-                .append("ARRAY['")
-                .append(value.toString())
-                .append("']")
-                .toString();
+            value = buildString("ARRAY['", value, "']");
         } else {
-            value = new StringBuilder()
-                .append("'")
-                .append(value.toString())
-                .append("'")
-                .toString();
+            value = buildString("'", value, "'");
         }
 
         return new PostgresqlDBConstraint(property, condition, value);

@@ -3,7 +3,6 @@
 database_connection:
   hostname : localhost
   port : 5432
-  username : null
   database : testdb
   timeout-connection-ms : 18000
   timeout-write-ms : 4000
