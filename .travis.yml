@@ -1,0 +1,19 @@
+nguage: java
+jdk:
+  - oraclejdk7
+  - openjdk7
+  - oraclejdk8
+services:
+  - postgresql
+addons:
+  - postgresql: "9.3"
+before_script:
+  - psql c 'create database testdb;' -U postgres
+env:
+  - STUCCO_DB_TYPE=INMEMORY STUCCO_DB_CONFIG="config/postgresql.yml" STUCCO_DB_INDEX_CONFIG=""
+after_success:
+  - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
+  - chmod a+x ./rerun-test.sh
+  - ./rerun-test.sh
+notifications:
+  slack: sava:lB0VBcWKom3VNlr126hyI04E

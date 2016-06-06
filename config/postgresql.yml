@@ -4,6 +4,7 @@ database_connection:
   hostname : localhost
   port : 5432
   database : testdb
+  password : ""
   timeout-connection-ms : 18000
   timeout-write-ms : 4000
   timeout-read-ms : 16000
