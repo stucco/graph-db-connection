@@ -182,6 +182,16 @@ public class PostgresqlDBPreparedStatement {
 				return "SELECT inVertID AS vertID FROM Edges WHERE relation = ? AND outVertID = ?;";
 			}
 		},
+		GET_IN_VERT_IDS_AND_TABLE_BY_RELATION ("getInVertIDsAndTableByRelation", TABLE.EDGE_TABLE) {
+			public String getStatement(String... args) {
+				return "SELECT inVertID AS vertID AND inVertTable AS tableName FROM Edges WHERE relation = ? AND outVertID = ?;";
+			}
+		},
+		GET_OUT_VERT_IDS_AND_TABLE_BY_RELATION ("getOutVertIDsAndTableByRelation", TABLE.EDGE_TABLE) {
+			public String getStatement(String... args) {
+				return "SELECT outVertID AS vertID AND outVertTable as tableName FROM Edges WHERE relation = ? AND inVertID = ?;";
+			}
+		},
 		GET_VERT_IDS_BY_RELATION ("getVertIDsByRelation", TABLE.EDGE_TABLE) {
 			public String getStatement(String... args) {
 				return	"SELECT outVertID as vertID FROM Edges WHERE relation = ? AND inVertID = ? " +
@@ -303,5 +313,18 @@ public class PostgresqlDBPreparedStatement {
 	 */
 	public PreparedStatement getPreparedStatement (String table, API function) {
 		return preparedStatements.get(table).get(function);
+	}
+
+	/**
+	 * closing resources
+	 */
+	public void close() throws SQLException {
+		for (String table : preparedStatements.keySet()) {
+			Map<API, PreparedStatement> map = preparedStatements.get(table);
+			for (API function : map.keySet()) {
+				PreparedStatement ps = map.get(function);
+				ps.close();
+			}
+		}
 	}
 }
