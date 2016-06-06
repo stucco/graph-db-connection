@@ -5,21 +5,28 @@ import gov.pnnl.stucco.dbconnect.DBConnectionBase;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 import gov.pnnl.stucco.dbconnect.StuccoDBException;
 
+import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement;
+import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement.Columns;
+import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement.API;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.DatabaseMetaData; 
 import java.sql.ResultSet; 
-import java.sql.SQLException;
+import java.sql.SQLException; 
 import java.sql.Array;
 import java.sql.ResultSetMetaData;
- 
-import java.io.PrintWriter; 
+import java.sql.Timestamp;  
+import java.sql.Types;
+    
+import java.io.PrintWriter;  
 import java.io.StringWriter;
 import java.io.IOException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.io.InputStream; 
 import java.io.OutputStream;
 import java.io.PrintStream;
 
@@ -33,6 +40,9 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.UUID;
+
+import java.math.BigInteger;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -54,6 +64,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private Map<String, Object> configuration;
     private Connection connection;
     private Statement statement;
+
+    private PostgresqlDBPreparedStatement ps;
 
     static {
         try {
@@ -91,6 +103,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             String password = (configuration.containsKey("password")) ? configuration.get("password").toString() : null;
             connection = DriverManager.getConnection(url, username, password);
             statement = connection.createStatement();
+            ps = new PostgresqlDBPreparedStatement(connection, vertTables);
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
@@ -106,10 +119,11 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } 
     };
 
-    private static String getStackTrace(Exception e){
+    private static String getStackTrace(Exception e) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
+
         return sw.toString();
     }
 
@@ -123,8 +137,29 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             statement.executeUpdate(sql);
         } 
         //creating table for edges
-        String query = ("CREATE TABLE IF NOT EXISTS Edges (relation text NOT NULL, outVertID uuid NOT NULL, inVertID uuid NOT NULL);");
+        boolean enum_exists = selectExists("SELECT EXISTS (SELECT * FROM pg_type WHERE typname = 'tableenum');");
+        if (!enum_exists) {
+            statement.executeUpdate("CREATE TYPE tableenum AS ENUM " + 
+                "('AddressRange', 'Campaign', 'Course_Of_Action', 'Exploit', 'Exploit_Target', " +
+                "'Incident', 'Indicator', 'IP', 'Malware', 'Observable', 'Threat_Actor', 'TTP', 'Vulnerability', 'Weakness');");
+        }
+        String query = ("CREATE TABLE IF NOT EXISTS Edges (relation text NOT NULL, outVertID uuid NOT NULL, inVertID uuid NOT NULL, outVertTable tableEnum  NOT NULL, inVertTable tableEnum NOT NULL);");
         statement.executeUpdate(query);
+    }
+
+    private boolean selectExists(String query) {
+        boolean exists = false;
+        try {
+            ResultSet rs = statement.executeQuery(query);
+            rs.next();
+            exists = rs.getBoolean(1);
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to execute query: " + query); 
+        }
+
+        return exists;
     }
 
     private String buildCreateTableSQL(String tableName, JSONObject table) {
@@ -169,28 +204,43 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         for (Object table : vertTables.keySet()) {
             try {
                 String tableName = table.toString();
-                //creating column for tsvector (tsv)
-                String query = buildString("ALTER TABLE ", tableName, " ADD COLUMN tsv tsvector;");
-                statement.executeUpdate(query);
-                query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(sourceDocument, ' '));");
-                statement.executeUpdate(query);
-                //setting index on tsv
-                query = buildString("CREATE INDEX tsv_idx ON ", tableName, " USING gin('english', tsv);");
-                statement.executeUpdate(query);
+                DatabaseMetaData databaseMetaData = connection.getMetaData();
+                ResultSet rs = databaseMetaData.getColumns(null, null,  tableName.toLowerCase(), "tsv");
+                boolean columnExists = rs.next();
+                //creating a column for tsvector (tsv)
+                if (!columnExists) {
+                    String query = buildString("ALTER TABLE ", tableName, " ADD COLUMN tsv tsvector;");
+                    statement.executeUpdate(query);
+                    query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(sourceDocument, ' ') || ' ' || coalesce(array_to_string(description, ' '), ' '));");
+                    statement.executeUpdate(query);
+                    //setting index on tsv
+                    query = buildString("CREATE INDEX CONCURRENTLY ", tableName, "_tsv_idx ON ", tableName, " USING gin(tsv) WITH (fastupdate = off);");
+                    statement.executeUpdate(query);
+                }
                 //creating function and a trigger to update tsv every time sourceDocument is updated
-                query = "CREATE FUNCTION search_trigger() RETURNS trigger AS $$ " +
-                    "begin " +
-                        "new.tsv := to_tsvector(coalesce(new.sourceDocument, ' ')); " +
-                        "return new; " +
-                    "end " +
-                    "$$ LANGUAGE plpgsql;";
-                statement.executeUpdate(query);
-                query = "CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON sourceDocument FOR EACH ROW EXECUTE PROCEDURE search_trigger();";
-                statement.executeUpdate(query);
-            } catch (SQLException e) {}
+                boolean functionExists = executeSQLQuery("SELECT routine_name FROM information_schema.routines where routine_name = 'search_trigger';");
+                if (!functionExists) {
+                    String query = "CREATE FUNCTION search_trigger() RETURNS TRIGGER AS $search_trigger$ " +
+                        "BEGIN " +
+                            "new.tsv := to_tsvector('english', coalesce(array_to_string(new.description, ' '), ' ')) || to_tsvector('english', coalesce(new.sourceDocument, ' ')); " +
+                            "return new; " +
+                        "END " +
+                        "$search_trigger$ LANGUAGE plpgsql;";
+                    statement.executeUpdate(query);
+                }
+                String query = buildString("SELECT event_object_table FROM information_schema.triggers WHERE trigger_name = 'tsvectorupdate' AND event_object_table = '", tableName.toLowerCase(), "';");
+                boolean triggerExists = executeSQLQuery(query);
+                if (!triggerExists) {
+                    query = buildString("CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON ", tableName, " FOR EACH ROW EXECUTE PROCEDURE search_trigger();");
+                    statement.executeUpdate(query);
+                }
+            } catch (SQLException e) {
+                logger.warn(e.getLocalizedMessage());
+                logger.warn(getStackTrace(e));
+                throw new StuccoDBException("failed to add indexes");
+            }
         }
     };
-
 
     /**
      * Given a property map add a new vertex to the DB
@@ -203,11 +253,51 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         String id = null;
         try {
-            String sql = buildInsertSQL(properties.get("vertexType").toString(), properties);
-            statement.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
-            ResultSet rs = statement.getGeneratedKeys();
+            String tableName = properties.get("vertexType").toString();
+            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.ADD_VERTEX);
+            JSONObject table = vertTables.getJSONObject(tableName);
+            for (Object key : table.keySet()) {
+                String column = key.toString();
+                switch (Columns.valueOf(column).type) {
+                    case TEXT: 
+                        if (properties.containsKey(column)) {
+                            preparedStatement.setString(Columns.valueOf(column).index, properties.get(column).toString());
+                        } else {
+                            preparedStatement.setNull(Columns.valueOf(column).index, Types.VARCHAR);
+                        }
+                        break;
+                    case ARRAY:
+                        if (properties.containsKey(column)) {
+                            Collection collection = (Collection) properties.get(column);
+                            Object[] array = (Object[]) collection.toArray();
+                            Array sqlArray = connection.createArrayOf("text", array);
+                            preparedStatement.setArray(Columns.valueOf(column).index, sqlArray);
+                        } else {
+                            preparedStatement.setNull(Columns.valueOf(column).index, Types.ARRAY);
+                        }
+                        break;
+                    case BIGINT:
+                        if (properties.containsKey(column)) {
+                            preparedStatement.setLong(Columns.valueOf(column).index, (long)properties.get(column));
+                        } else {
+                            preparedStatement.setNull(Columns.valueOf(column).index, Types.BIGINT);
+                        }
+                        break;
+                    case TIMESTAMP:
+                        if (properties.containsKey(column)) {
+                            preparedStatement.setTimestamp(Columns.valueOf(column).index, (Timestamp)properties.get(column));
+                        } else {
+                            preparedStatement.setNull(Columns.valueOf(column).index, Types.TIMESTAMP);
+                        }
+                        break;
+                }
+            }
+
+            preparedStatement.executeUpdate();
+            ResultSet rs = preparedStatement.getGeneratedKeys();
             rs.next();
             id = rs.getString("_id");
+
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
@@ -216,45 +306,6 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         return id;
     };
-
-    /**
-     * build add (insert into table) vertex sql 
-     * @param properties - vertex properties to be converted to sql string
-     * @return sql string 
-     */
-    private static String buildInsertSQL(String tableName, Map<String, Object> properties) {
-        String delimiter = "";
-        JSONObject table = vertTables.getJSONObject(tableName);
-        StringBuilder propertiesSQL = new StringBuilder();
-        StringBuilder valuesSQL = new StringBuilder();
-        for (String propertyName : properties.keySet()) {
-            propertiesSQL.append(delimiter);
-            propertiesSQL.append(propertyName);
-            JSONObject propertyConstraint = table.getJSONObject(propertyName);
-            String value;
-            switch (propertyConstraint.getString("type")) {
-                case "array":
-                    List<String> set = (List<String>) properties.get(propertyName);
-                    value = buildArrayString(set);
-                    break;
-                case "bigint":
-                    value = properties.get(propertyName).toString();
-                    break;
-                default:
-                    value = buildString("'", properties.get(propertyName).toString(), "'");
-                    break;
-
-            }
-            valuesSQL
-                .append(delimiter)
-                .append(value);
-            delimiter = ", ";
-        }
-
-        String query = buildString("INSERT INTO ", tableName, " (", propertiesSQL, ") ", "VALUES (", valuesSQL, ");");
-
-        return query;
-    }
 
     /**
      * turn list into string of following form (including double quotes): "{'value1', 'value2'}";
@@ -286,9 +337,10 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         Map<String, Object> vertex = null;
         for (Object key : vertTables.keySet()) {
             String tableName = key.toString();
-            String query = buildString("SELECT * FROM ", tableName, " WHERE _id = '", id, "';");
+            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERT_BY_ID);
             try {
-                ResultSet rs = statement.executeQuery(query);
+                preparedStatement.setObject(1, UUID.fromString(id));
+                ResultSet rs = preparedStatement.executeQuery();
                 if (rs.next()) {
                     vertex = convertResultSetToMap(tableName, rs);
                     break;
@@ -342,9 +394,18 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("add edge", inVertID, "inVertID");
         sanityCheck("add edge", outVertID, "outVertID");
         sanityCheck("add edge", relation, "relation");
-       
-        String query = buildString("INSERT INTO Edges (relation, outVertID, inVertID) VALUES ('", relation, "', '", outVertID, "', '", inVertID, "');");
-        executeSQLQuery(query);   
+
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.ADD_EDGE);
+        try {
+            preparedStatement.setString(1, relation);
+            preparedStatement.setString(2, outVertID);
+            preparedStatement.setString(3, inVertID);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to add edge!");
+        }  
     };
 
     /**
@@ -355,11 +416,22 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     @Override
     public List<Map<String, Object>> getOutEdges(String outVertID) {
         sanityCheck("get edges", outVertID, "outVertID");
-        
-        String query = buildString("SELECT * FROM Edges WHERE outVertID = '", outVertID, "';");
-        List<Map<String, Object>> outEdges = getEdges(query);
 
-        return outEdges;
+        List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_EDGES);
+        try {
+            preparedStatement.setObject(1, UUID.fromString(outVertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> map = edgesResultSetToMap(rs);
+                edges.add(map);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get out edges!");
+        }
+        return edges;
     };
 
     /**
@@ -371,10 +443,22 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     public List<Map<String, Object>> getInEdges(String inVertID) {
         sanityCheck("get edges", inVertID, "inVertID");
 
-        String query = buildString("SELECT * FROM Edges WHERE inVertID = '", inVertID, "';");
-        List<Map<String, Object>> inEdges = getEdges(query);
+        List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_EDGES);
+        try {
+            preparedStatement.setObject(1, UUID.fromString(inVertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> map = edgesResultSetToMap(rs);
+                edges.add(map);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get in edges!");
+        }
 
-        return inEdges;
+        return edges;     
     }
     
     /**
@@ -421,11 +505,23 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     public List<String> getInVertIDsByRelation(String outVertID, String relation) {
         sanityCheck("get vert id", outVertID, "outVertID");
         sanityCheck("get vert id", relation, "relation");
-        
-        String query = buildString("SELECT inVertID AS vertID FROM Edges WHERE relation = '", relation, "' AND outVertID = '", outVertID, "';");
-        List<String> inVertIDsList = getVertIDs(query);
 
-        return inVertIDsList;
+        List<String> vertIDs =  new ArrayList<String>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_VERT_IDS_BY_RELATION);
+        try {
+            preparedStatement.setString(1, relation);
+            preparedStatement.setObject(2, UUID.fromString(outVertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                vertIDs.add(rs.getString("vertID"));
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get in vert ids!");
+        }
+
+        return vertIDs;
     };
 
     /**
@@ -439,10 +535,22 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edge", inVertID, "inVertID");
         sanityCheck("get edge", relation, "relation");
 
-        String query = buildString("SELECT outVertID AS vertID FROM Edges WHERE relation = '", relation, "' AND inVertID = '", inVertID, "';");
-        List<String> outVertIDsList = getVertIDs(query);
+        List<String> vertIDs =  new ArrayList<String>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_VERT_IDS_BY_RELATION);
+        try {
+            preparedStatement.setString(1, relation);
+            preparedStatement.setObject(2, UUID.fromString(inVertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                vertIDs.add(rs.getString("vertID"));
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get out vert ids!");
+        }
 
-        return outVertIDsList;
+        return vertIDs;
     };
 
     /**
@@ -477,10 +585,22 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get vert id", vertID, "vertID");
         sanityCheck("get vert id", relation, "relation");
 
-        String query = buildString("SELECT outVertID as vertID FROM Edges WHERE relation = '", relation, "' AND inVertID = '", vertID, 
-                                    "' UNION ",
-                                    "SELECT inVertID as vertID FROM Edges WHERE relation = '", relation, "' and outVertID = '", vertID, "';");
-        List<String> vertIDs = getVertIDs(query);
+        List<String> vertIDs =  new ArrayList<String>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_VERT_IDS_BY_RELATION);
+        try {
+            preparedStatement.setString(1, relation);
+            preparedStatement.setObject(2, UUID.fromString(vertID));
+            preparedStatement.setString(3, relation);
+            preparedStatement.setObject(4, UUID.fromString(vertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                vertIDs.add(rs.getString("vertID"));
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get vert ids!");
+        }
 
         return vertIDs;
     };
@@ -666,9 +786,18 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("remove edge", inVertID, "inVertID");
         sanityCheck("remove edge", outVertID, "outVertID");
         sanityCheck("remove edge", relation, "relation");
-        
-        String query = buildString("DELETE FROM Edges WHERE relation = '", relation, "' AND outVertID = '", outVertID, "' AND inVertID = '", inVertID, "';");
-        executeSQLQuery(query);
+
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.REMOVE_EDGE_BY_RELATION);
+        try {
+            preparedStatement.setString(1, relation);
+            preparedStatement.setObject(2, UUID.fromString(outVertID));
+            preparedStatement.setObject(3, UUID.fromString(inVertID));
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to remove edge!");
+        }
     };
 
     /**
@@ -682,11 +811,17 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
-            String query = buildString("DELETE FROM ", tableName, " WHERE _id = '", vertID, "';");
-            boolean success = executeSQLQuery(query);
-            if (success) {
-                removeEdgeByVertID(vertID);
-                break;
+            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.REMOVE_VERT_BY_ID);
+            try {
+                preparedStatement.setObject(1, UUID.fromString(vertID));
+                int count = preparedStatement.executeUpdate();
+                if (count != 0) {
+                    break;
+                }
+            } catch (SQLException e) {
+                logger.warn(e.getLocalizedMessage());
+                logger.warn(getStackTrace(e));
+                throw new StuccoDBException("Failed to remove vert by id!");
             }
         }
     };
@@ -695,8 +830,17 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * remove edge if it contains outVertID or inVertID matching vertID
      */
     private void removeEdgeByVertID(String vertID) {
-        String query = buildString("DELETE FROM Edges WHERE outVertID = '", vertID, "' OR inVertID = '", vertID, "';");
-        executeSQLQuery(query.toString());
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.REMOVE_EDGE_BY_VERT_ID);
+        try {
+            UUID uuid = UUID.fromString(vertID);
+            preparedStatement.setObject(1, uuid);
+            preparedStatement.setObject(1, uuid);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to remove edge by vert ID!");
+        }
     }
     
     /**
@@ -718,7 +862,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         String tableName = properties.get("vertexType").toString();
         String query = buildString("UPDATE ", tableName, " SET ", updates, " WHERE _id = '", vertID, "';");
 
-        executeSQLQuery(query);
+        executeSQLUpdate(query);
     };
 
      /**
@@ -733,7 +877,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
             String query = buildString("UPDATE ", tableName, " SET ", key, " = ", value, ";");
-            boolean success = executeSQLQuery(query);
+            boolean success = executeSQLUpdate(query);
             if (success) {
                 break;
             }
@@ -759,20 +903,43 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void removeAllVertices() {
-        //removing content of vert tables 
-        for (Object table : vertTables.keySet()) {
-            String tableName = table.toString(); 
-            String query = buildString("DELETE FROM ", tableName, ";");
-            executeSQLQuery(query);
+        try {
+            for (Object table : vertTables.keySet()) {
+                String tableName = table.toString();
+                PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.REMOVE_ALL_VERTICES);
+                preparedStatement.executeUpdate();
+            }
+            PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.REMOVE_ALL_EDGES);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to remove all vertices!");            
         }
-        //removing content of edge table
-        executeSQLQuery("DELETE FROM Edges;");
+        
     };
 
     /**
      *  helper function to execute sql queries when return is not reqired
      */
     private boolean executeSQLQuery(String query) {
+        boolean success = false;
+        try {
+            ResultSet rs = statement.executeQuery(query);
+            success = rs.next();
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to execute query: " + query);
+        }
+
+        return success;
+    }
+
+    /**
+     *  helper function to execute sql queries when return is not reqired
+     */
+    private boolean executeSQLUpdate(String query) {
         boolean success = false;
         try {
             int count = statement.executeUpdate(query);
@@ -785,6 +952,25 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         return success;
     }
+
+    /**
+     *  helper function to execute sql queries when return is not reqired
+     */
+    private boolean executeSQLUpdate(PreparedStatement preparedStatement) {
+        boolean success = false;
+        try {
+            int count = preparedStatement.executeUpdate();
+            success = (count != 0);
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to execute update");
+        }
+
+        return success;
+    }
+
+
 
     /**
      * load db state from the specified file
@@ -871,10 +1057,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         JSONObject vertices = new JSONObject();
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
-            JSONObject tableContent = vertTables.getJSONObject(tableName);
-            String query = buildString("SELECT * FROM ", tableName, ";");
+            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_ALL_VERTICES);
             try {
-                ResultSet rs = statement.executeQuery(query);
+                ResultSet rs = preparedStatement.executeQuery();
                 while (rs.next()) {
                     Map<String, Object> vert = convertResultSetToMap(tableName, rs);
                     JSONObject jsonVert = new JSONObject();
@@ -898,9 +1083,17 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     private JSONArray getAllEdges() {
         JSONArray edgesJson = new JSONArray();
-        List<Map<String, Object>> edges = getEdges("SELECT * FROM Edges;");
-        for (Map<String, Object> edge : edges) {
-            edgesJson.put(new JSONObject(edge));
+        try {
+            PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_ALL_EDGES);
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> edge = edgesResultSetToMap(rs);
+                edgesJson.put(new JSONObject(edge));
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to get all edges from DB!");
         }
        
        return edgesJson;
@@ -914,9 +1107,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         long count = 0L;
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
-            String countSQL = String.format("SELECT COUNT(*) FROM %s;", tableName);
+            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERT_COUNT);
             try {
-                ResultSet rs = statement.executeQuery(countSQL);
+                ResultSet rs = preparedStatement.executeQuery();
                 if (rs.next()) {
                     count += rs.getLong(1);
                 }
@@ -934,10 +1127,11 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * gets the number of edges in the graph; aka number of rows in "Edges" table in the database
      */
     @Override
-    public long getEdgeCount(){
+    public long getEdgeCount() {
         long count = 0L;
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_EDGE_COUNT);
         try {
-            ResultSet rs = statement.executeQuery("SELECT COUNT(*) FROM Edges;");
+            ResultSet rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 count = rs.getLong(1);
             }
@@ -964,9 +1158,12 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edge count", outVertID, "outVertID");
 
         int count = 0;
-        String query = buildString("SELECT COUNT(*) FROM Edges WHERE relation = '", relation, "' AND outVertID = '", outVertID, "' AND inVertID = '", inVertID, "';");
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_EDGE_COUNT_BY_RELATION);
         try {
-            ResultSet rs = statement.executeQuery(query.toString());
+            preparedStatement.setString(1, relation);
+            preparedStatement.setObject(2, UUID.fromString(outVertID));
+            preparedStatement.setObject(3, UUID.fromString(inVertID));
+            ResultSet rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 count = rs.getInt(1);
             }

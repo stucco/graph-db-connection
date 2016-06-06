@@ -9,6 +9,14 @@
         "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
         "type": "uuid"
       }, 
+      "outVertTable": {
+        "constraint": "vertex_type", 
+        "type": "enum"
+      },
+      "inVertTable": {
+        "constraint": "vertex_type", 
+        "type": "enum"
+      },
       "relation": {
         "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
         "type": "text"
@@ -17,7 +25,7 @@
   },
   "vertices": {
     "AddressRange": {
-      "endIP": {
+      "endIP": { 
         "constraint": "text NOT NULL",
         "type": "text"
       }, 

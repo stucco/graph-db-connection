@@ -17,14 +17,14 @@ import java.util.Set;
 import java.util.Objects;
 import java.util.Collection;
  
-import junit.framework.TestCase;
+import junit.framework.TestCase; 
 
 import org.junit.After; 
 import org.junit.AfterClass;
-import org.junit.Before;
+import org.junit.Before; 
 import org.junit.BeforeClass;
-import org.junit.Test;
-
+import org.junit.Test; 
+ 
 import org.json.JSONObject;
 import org.json.JSONArray;
 
@@ -33,7 +33,7 @@ import org.json.JSONArray;
  * NOTE: two environment variable must be defined:
  *       STUCCO_DB_CONFIG=<path/filename.yml>
  *       STUCCO_DB_TYPE= INMEMORY|ORIENTDB|TITAN|NEO4J|POSTGRESQL
- */
+ */ 
 public class PostgresqlDBConnectionTest extends TestCase {
     private static DBConnectionFactory factory = DBConnectionFactory.getFactory(DBConnectionFactory.Type.POSTGRESQL);
     private static DBConnectionTestInterface conn;
@@ -42,15 +42,15 @@ public class PostgresqlDBConnectionTest extends TestCase {
         factory.setConfiguration("./config/postgresql.yml");
         conn = factory.getDBConnectionTestInterface();
         conn.open();
-        String s = "";
-        System.out.println("s.isEmpty() = " + s.isEmpty());
+        conn.removeAllVertices();
+        conn.buildIndex(null);
     }
 
     public void tearDown(){
-        conn.removeAllVertices();
+    //    conn.removeAllVertices();
         conn.close();
     }
-
+/*
     public void testLoadOneVertex() {
         String vertexString = 
             "{" +
@@ -143,6 +143,8 @@ public class PostgresqlDBConnectionTest extends TestCase {
         conn.removeVertByID(inVertID);
         vertCount = conn.getVertCount();
         assertEquals(vertCount, 0);
+
+        conn.removeAllVertices();
     }
 
     public void testUpdateProperties() {
@@ -258,6 +260,8 @@ public class PostgresqlDBConnectionTest extends TestCase {
         assertEquals(vertIDs.size(), 1);
         coaMapDB = conn.getVertByID(vertIDs.get(0));
         assertEquals(coaMap, coaMapDB);
+
+        conn.removeAllVertices();
     }
 
     public void testConstraints() {
@@ -356,6 +360,49 @@ public class PostgresqlDBConnectionTest extends TestCase {
             vertIDsList = conn.getInVertIDsByRelation(ipID, "Contained_Within", constraints);
             assertEquals(vertIDsList.size(), 1);
             assertEquals(addrRangeMap, conn.getVertByID(vertIDsList.get(0)));
+
+            conn.removeAllVertices();
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+        } 
+    }
+*/
+    public void testLoad() {
+        String addrRangeString =
+        "{" +
+        "      \"endIP\": \"216.98.188.255\"," +
+        "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:addressRange-33f72b4c-e6f2-4d82-88d4-2a7711ce7bfe\\\"><cybox:Title>AddressRange<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">CAIDA<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:addressRange-3630349312-3630349567\\\"><cybox:Description>216.98.188.0 through 216.98.188.255<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\" apply_condition=\\\"ANY\\\" condition=\\\"InclusiveBetween\\\" delimiter=\\\" - \\\">216.98.188.0 - 216.98.188.255<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
+        "      \"vertexType\": \"AddressRange\"," +
+        "      \"startIP\": \"216.98.188.0\"," +
+        "      \"startIPInt\": 3630349312," +
+        "      \"name\": \"216.98.188.0 - 216.98.188.255\"," +
+        "      \"description\": [\"216.98.188.0 through 216.98.188.255\"]," +
+        "      \"source\": [\"CAIDA\"]," +
+        "      \"endIPInt\": 3630349567," +
+        "      \"observableType\": \"Address\"" +
+        "}";
+
+        String ipString =
+        "{" +
+        "      \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" id=\\\"stucco:ip-cf1042ad-8f95-47e2-830d-4951f81f5241\\\"><cybox:Title>IP<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">LoginEvent<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:ip-3232238091\\\"><cybox:Description>192.168.10.11<\\/cybox:Description><cybox:Properties xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" category=\\\"ipv4-addr\\\" xsi:type=\\\"AddressObj:AddressObjectType\\\"><AddressObj:Address_Value xmlns:AddressObj=\\\"http://cybox.mitre.org/objects#AddressObject-2\\\">216.98.188.1<\\/AddressObj:Address_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\","+
+        "      \"vertexType\": \"IP\"," +
+        "      \"ipInt\": 3630349313," +
+        "      \"name\": \"216.98.188.1\"," +
+        "      \"description\": [\"216.98.188.1\", \"Some other description .\"]," +
+        "      \"source\": [\"LoginEvent\", \"maxmind\"]," +
+        "      \"observableType\": \"Address\"" + 
+        "}";
+
+        try {
+            Map<String, Object> addrRangeMap = conn.jsonVertToMap(new JSONObject(addrRangeString));
+            String addrRangeID = conn.addVertex(addrRangeMap);
+            assertEquals(addrRangeMap, conn.getVertByID(addrRangeID));
+
+
+
+            Map<String, Object> ipMap = conn.jsonVertToMap(new JSONObject(ipString));
+            String ipID = conn.addVertex(ipMap);
+            assertEquals(ipMap, conn.getVertByID(ipID));
         } catch (RuntimeException e) {
             e.printStackTrace();
         } 
