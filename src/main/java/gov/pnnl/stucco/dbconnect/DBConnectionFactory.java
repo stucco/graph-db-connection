@@ -5,9 +5,10 @@ package gov.pnnl.stucco.dbconnect;
  */
 import gov.pnnl.stucco.dbconnect.inmemory.InMemoryDBConnectionFactory;
 import gov.pnnl.stucco.dbconnect.orientdb.OrientDBConnectionFactory;
+import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBConnectionFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileInputStream; 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -30,7 +31,8 @@ public abstract class DBConnectionFactory {
         TITAN,
         INMEMORY,
         ORIENTDB,
-        NEO4J
+        NEO4J,
+        POSTGRESQL
     }
     
     /** configuration information for the DB we will be using */
@@ -58,6 +60,8 @@ public abstract class DBConnectionFactory {
                 return new OrientDBConnectionFactory();
             case TITAN:
                 break;
+            case POSTGRESQL:
+                return new PostgresqlDBConnectionFactory();
             default:
                 break;
         }
