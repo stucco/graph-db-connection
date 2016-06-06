@@ -23,7 +23,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before; 
 import org.junit.BeforeClass;
-import org.junit.Test; 
+import org.junit.Test;  
  
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -50,7 +50,7 @@ public class PostgresqlDBConnectionTest extends TestCase {
     //    conn.removeAllVertices();
         conn.close();
     }
-/*
+
     public void testLoadOneVertex() {
         String vertexString = 
             "{" +
@@ -71,9 +71,9 @@ public class PostgresqlDBConnectionTest extends TestCase {
         Map<String, Object> expectedVertex = conn.getVertByID(id);
         assertEquals(vertex, expectedVertex);
         long count = conn.getVertCount();
-        System.out.println("vert count = " + count);
+        assertEquals(count, 1);
         count = conn.getEdgeCount();
-        System.out.println("edge count = " + count);
+        assertEquals(count, 0);
     }
 
     public void testLoadTwoVerticesOneEdge() {
@@ -366,7 +366,7 @@ public class PostgresqlDBConnectionTest extends TestCase {
             e.printStackTrace();
         } 
     }
-*/
+
     public void testLoad() {
         String addrRangeString =
         "{" +
