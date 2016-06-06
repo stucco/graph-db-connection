@@ -331,10 +331,15 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("add edge", relation, "relation");
 
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.ADD_EDGE);
+
         try {
+            String outVertTable = getVertexType(outVertID);
+            String inVertTable = getVertexType(inVertID);
             preparedStatement.setString(1, relation);
-            preparedStatement.setString(2, outVertID);
-            preparedStatement.setString(3, inVertID);
+            preparedStatement.setObject(2, UUID.fromString(outVertID));
+            preparedStatement.setObject(3, UUID.fromString(inVertID));
+            preparedStatement.setString(4, outVertTable);
+            preparedStatement.setString(5, inVertTable);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
@@ -342,6 +347,22 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             throw new StuccoDBException("Failed to add edge!");
         }  
     };
+
+    private String getVertexType(String vertID) throws SQLException {
+        String vertexType = null;
+        for (Object table : vertTables.keySet()) {
+            String tableName = table.toString();
+            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERTEX_TYPE_BY_ID);
+            preparedStatement.setObject(1, UUID.fromString(vertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            if (rs.next()) {
+                vertexType = rs.getString(1);
+                break;
+            }
+        }
+
+        return vertexType;
+    }
 
     /**
      * returns list of edge info maps for the outgoing edges of this vertex
@@ -726,6 +747,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 preparedStatement.setObject(1, UUID.fromString(vertID));
                 int count = preparedStatement.executeUpdate();
                 if (count != 0) {
+                    removeEdgeByVertID(vertID);
                     break;
                 }
             } catch (SQLException e) {
@@ -734,6 +756,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 throw new StuccoDBException("Failed to remove vert by id!");
             }
         }
+
     };
 
     /**
@@ -744,7 +767,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         try {
             UUID uuid = UUID.fromString(vertID);
             preparedStatement.setObject(1, uuid);
-            preparedStatement.setObject(1, uuid);
+            preparedStatement.setObject(2, uuid);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
@@ -1053,7 +1076,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     
 
     /**
-     * helper funciton to collect list of edge ids selected by query
+     * helper funciton to collect list of ids selected by query
      * @param query - select Edge table query with some constraints
      * @return list of vert ids selected by query
      */

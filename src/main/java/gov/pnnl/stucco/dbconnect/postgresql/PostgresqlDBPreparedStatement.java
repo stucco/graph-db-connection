@@ -1,46 +1,18 @@
 package gov.pnnl.stucco.dbconnect.postgresql;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.Statement;
-import java.sql.PreparedStatement;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet; 
+import java.sql.PreparedStatement; 
 import java.sql.SQLException;
-import java.sql.Array;
-import java.sql.ResultSetMetaData;
-   
-import java.io.PrintWriter;  
-import java.io.StringWriter;
-import java.io.IOException;
-import java.io.FileInputStream;
-import java.io.FileOutputStream; 
-import java.io.InputStream; 
-import java.io.OutputStream;
-import java.io.PrintStream;
  
 import java.util.Map;
 import java.util.HashMap;  
-import java.util.Set;
-import java.util.HashSet; 
-import java.util.List;
-import java.util.ArrayList;
 import java.util.Arrays; 
-import java.util.LinkedHashMap;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PostgresqlDBPreparedStatement {
 
@@ -48,6 +20,9 @@ public class PostgresqlDBPreparedStatement {
 	private Connection connection;
 	private Map<String, Map<API, PreparedStatement>> preparedStatements;
 
+	/**
+	 * comparator to sort and insert keys into specified positions in PreparedStatements
+	 */
 	public static class ColumnIndexComparator implements Comparator<String> {
 		public int compare(String c1, String c2) {
 			int c1index = Columns.valueOf(c1).index;
@@ -94,7 +69,7 @@ public class PostgresqlDBPreparedStatement {
 		publishedDate (7, TYPE.TIMESTAMP),
 		ipInt (7, TYPE.BIGINT),
 		location (7, TYPE.TEXT),
-		details (8, TYPE.TEXT),
+		details (8, TYPE.ARRAY),
 		startIP (8, TYPE.TEXT),
 		endIP (9, TYPE.TEXT),
 		startIPInt (10, TYPE.BIGINT),
@@ -159,7 +134,7 @@ public class PostgresqlDBPreparedStatement {
 		},
 		ADD_EDGE ("addEdges", TABLE.EDGE_TABLE) {
 			public String getStatement(String... args) {
-				return "INSERT INTO Edges (relation, outVertID, inVertID) VALUES (?, ?, ?);";
+				return "INSERT INTO Edges (relation, outVertID, inVertID, outVertTable, inVertTable) VALUES (?, ?, ?, CAST(? AS tableenum), CAST(? AS tableenum));";
 			}
 		},
 		GET_OUT_EDGES ("getOutEdges", TABLE.EDGE_TABLE) {
@@ -184,12 +159,12 @@ public class PostgresqlDBPreparedStatement {
 		},
 		GET_IN_VERT_IDS_AND_TABLE_BY_RELATION ("getInVertIDsAndTableByRelation", TABLE.EDGE_TABLE) {
 			public String getStatement(String... args) {
-				return "SELECT inVertID AS vertID AND inVertTable AS tableName FROM Edges WHERE relation = ? AND outVertID = ?;";
+				return "SELECT inVertID AS vertID, inVertTable AS tableName FROM Edges WHERE relation = ? AND outVertID = ?;";
 			}
 		},
 		GET_OUT_VERT_IDS_AND_TABLE_BY_RELATION ("getOutVertIDsAndTableByRelation", TABLE.EDGE_TABLE) {
 			public String getStatement(String... args) {
-				return "SELECT outVertID AS vertID AND outVertTable as tableName FROM Edges WHERE relation = ? AND inVertID = ?;";
+				return "SELECT outVertID AS vertID, outVertTable as tableName FROM Edges WHERE relation = ? AND inVertID = ?;";
 			}
 		},
 		GET_VERT_IDS_BY_RELATION ("getVertIDsByRelation", TABLE.EDGE_TABLE) {
@@ -228,6 +203,11 @@ public class PostgresqlDBPreparedStatement {
 			public String getStatement(String... args) {
 				return "SELECT COUNT(*) FROM Edges WHERE relation = ? AND outVertID = ? AND inVertID = ?;";
 			}
+		},
+		GET_VERTEX_TYPE_BY_ID ("getVertexTypeByID", TABLE.VERTEX_TABLE) {
+			public String getStatement(String... args) {
+				return String.format("SELECT vertexType FROM %s WHERE _id = ?;", args[0]);
+			}
 		};
 
 		public String function;
@@ -239,6 +219,11 @@ public class PostgresqlDBPreparedStatement {
 		}
 	}
 
+	/**
+	 * class construcctor; initialing population of PreparedStatements
+	 * @param connection - jdbc connection to instantiate PreparedStatements
+	 * @param vertTable - contains names of all vertex tables required to create PreparedStatements 
+	 */
 	public PostgresqlDBPreparedStatement(Connection connection, JSONObject vertTables) {
 		this.connection = connection;
 		this.vertTables = vertTables;
@@ -310,6 +295,8 @@ public class PostgresqlDBPreparedStatement {
 
 	/**
 	 * return PreparedStatement for specified table and function
+	 * @param table - name of quered table
+	 * @param function - api function name (query)
 	 */
 	public PreparedStatement getPreparedStatement (String table, API function) {
 		return preparedStatements.get(table).get(function);
