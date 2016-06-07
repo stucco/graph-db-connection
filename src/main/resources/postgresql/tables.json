@@ -42,8 +42,8 @@
         "type": "text"
       }, 
       "startIPInt": {
-        "constraint": "bigint NOT NULL",
-        "type": "bigint"
+        "constraint": "long NOT NULL",
+        "type": "long"
       },
       "name": {
         "constraint": "text NOT NULL UNIQUE",
@@ -66,8 +66,8 @@
         "type": "text"
       },
       "endIPInt": {
-        "constraint": "bigint NOT NULL",
-        "type": "bigint"
+        "constraint": "long NOT NULL",
+        "type": "long"
       }
     },
     "IP": {
@@ -80,8 +80,8 @@
         "type": "text"
       },
       "ipInt": {
-        "constraint": "bigint NOT NULL UNIQUE",
-        "type": "bigint"
+        "constraint": "long NOT NULL UNIQUE",
+        "type": "long"
       },
       "name": {
         "constraint": "text NOT NULL UNIQUE",
