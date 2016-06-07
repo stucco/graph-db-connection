@@ -14,7 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
-import java.sql.DatabaseMetaData; 
+import java.sql.DatabaseMetaData;  
 import java.sql.ResultSet; 
 import java.sql.SQLException; 
 import java.sql.Array;
@@ -257,9 +257,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                             preparedStatement.setNull(Columns.valueOf(column).index, Types.ARRAY);
                         }
                         break;
-                    case BIGINT:
+                    case LONG:
                         if (properties.containsKey(column)) {
-                            preparedStatement.setLong(Columns.valueOf(column).index, (long)properties.get(column));
+                            preparedStatement.setLong(Columns.valueOf(column).index, ((Number)properties.get(column)).longValue());
                         } else {
                             preparedStatement.setNull(Columns.valueOf(column).index, Types.BIGINT);
                         }
@@ -1242,5 +1242,25 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         e.printStackTrace(pw);
 
         return sw.toString();
+    }
+
+    @Override
+    public Map<String, Object> jsonVertToMap(JSONObject v) {
+        Map<String, Object> vert = new HashMap<String, Object>();
+        for(Object k : v.keySet()) {
+            String column = k.toString();
+            Object value = v.get(column);
+            switch (Columns.valueOf(column).type) {
+                case ARRAY:
+                    value = jsonArrayToList((JSONArray)value);
+                    break;
+                case LONG:
+                    value = ((Number)value).longValue();
+                    break;
+            }
+            vert.put(column, value);
+        }
+
+        return vert;
     }
 }

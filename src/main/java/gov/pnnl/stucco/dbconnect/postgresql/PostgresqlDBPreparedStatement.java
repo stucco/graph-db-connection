@@ -14,7 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import org.json.JSONObject;
 
-public class PostgresqlDBPreparedStatement {
+public class PostgresqlDBPreparedStatement { 
 
 	private static JSONObject vertTables;
 	private Connection connection;
@@ -44,12 +44,12 @@ public class PostgresqlDBPreparedStatement {
 	 * useful during insertion into PreparedStatement 
 	 * TYPE.TEXT -> setString()
 	 * TYPE.ARRAY -> setArray()
-	 * TYPE.BIGINT -> setLong() ... there is no setBigint() function
+	 * TYPE.LONG -> setLong() 
 	 * TYPE.TIMESTAMP -> setTimestamp()
 	 * etc...
 	 */
 	public enum TYPE {
-		TEXT, ARRAY, BIGINT, TIMESTAMP;
+		TEXT, ARRAY, LONG, TIMESTAMP;
 	}
 
 	/**
@@ -67,13 +67,13 @@ public class PostgresqlDBPreparedStatement {
 		shortDescription(6, TYPE.ARRAY),
 		alias (7, TYPE.ARRAY),
 		publishedDate (7, TYPE.TIMESTAMP),
-		ipInt (7, TYPE.BIGINT),
+		ipInt (7, TYPE.LONG),
 		location (7, TYPE.TEXT),
 		details (8, TYPE.ARRAY),
 		startIP (8, TYPE.TEXT),
 		endIP (9, TYPE.TEXT),
-		startIPInt (10, TYPE.BIGINT),
-		endIPInt (11, TYPE.BIGINT);
+		startIPInt (10, TYPE.LONG),
+		endIPInt (11, TYPE.LONG);
 
 		public int index;
 		public TYPE type;
@@ -154,7 +154,7 @@ public class PostgresqlDBPreparedStatement {
 		},
 		GET_OUT_VERT_IDS_BY_RELATION ("getOutVertIDsByRelation", TABLE.EDGE_TABLE) {
 			public String getStatement(String... args) {
-				return "SELECT inVertID AS vertID FROM Edges WHERE relation = ? AND outVertID = ?;";
+				return "SELECT outVertID AS vertID FROM Edges WHERE relation = ? AND inVertID = ?;";
 			}
 		},
 		GET_IN_VERT_IDS_AND_TABLE_BY_RELATION ("getInVertIDsAndTableByRelation", TABLE.EDGE_TABLE) {
