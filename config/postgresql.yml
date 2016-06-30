@@ -4,6 +4,7 @@ database_connection:
   hostname : localhost
   port : 5432
   database : testdb
+  username : stucco
   password : ""
   timeout-connection-ms : 18000
   timeout-write-ms : 4000
