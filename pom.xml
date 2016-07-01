@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>gov.pnnl.stucco</groupId>
 	<artifactId>DBConnect</artifactId>
-	<version>0.5.0</version>
+	<version>1.0.0</version>
 
 	<name>DBConnect</name>
 	<url>http://maven.apache.org</url>
