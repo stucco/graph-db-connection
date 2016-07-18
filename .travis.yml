@@ -6,6 +6,7 @@ jdk:
 addons:
   - postgresql: "9.3"
 before_script:
+  - psql -c "CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;" -U postgres
   - psql -c 'create database testdb;' -U stucco
 env:
   - STUCCO_DB_TYPE=POSTGRESQL STUCCO_DB_CONFIG="config/postgresql.yml" STUCCO_DB_INDEX_CONFIG=""
