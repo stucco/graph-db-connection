@@ -215,6 +215,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                     query = buildString("CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON ", tableName, " FOR EACH ROW EXECUTE PROCEDURE search_trigger();");
                     statement.executeUpdate(query);
                 }
+                //creating index on name (b-tree for now, since some names could be the same, such as network flow and network connection both contains src and dest addresses as their names)
+                query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_name_index", " ON ", tableName, " (name);");
+                statement.executeUpdate(query);
                 //creating index on vertexType
                 query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_vertextype_index", " ON ", tableName, " (vertexType);");
                 statement.executeUpdate(query);
