@@ -216,12 +216,12 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                     statement.executeUpdate(query);
                 }
                 //creating index on vertexType
-                query = buildString("CREATE INDEX IF NOT EXISTS ON ", tableName, " (vertexType);");
+                query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_vertextype_index", " ON ", tableName, " (vertexType);");
                 statement.executeUpdate(query);
                 //creating index on observableType
                 JSONObject vertTable = vertTables.getJSONObject(tableName);
                 if (vertTable.has("observableType")) {
-                    query = buildString("CREATE INDEX IF NOT EXISTS ON ", tableName, " (observableType);");
+                    query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_observabletype_index", " ON ", tableName, " (observableType);");
                     statement.executeUpdate(query);
                 }
             } catch (SQLException e) {
