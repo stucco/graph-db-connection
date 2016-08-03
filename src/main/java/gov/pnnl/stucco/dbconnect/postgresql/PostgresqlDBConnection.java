@@ -215,6 +215,15 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                     query = buildString("CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON ", tableName, " FOR EACH ROW EXECUTE PROCEDURE search_trigger();");
                     statement.executeUpdate(query);
                 }
+                //creating index on vertexType
+                query = buildString("CREATE INDEX IF NOT EXISTS ON ", tableName, " (vertexType);");
+                statement.executeUpdate(query);
+                //creating index on observableType
+                JSONObject vertTable = vertTables.getJSONObject(tableName);
+                if (vertTable.has("observableType")) {
+                    query = buildString("CREATE INDEX IF NOT EXISTS ON ", tableName, " (observableType);");
+                    statement.executeUpdate(query);
+                }
             } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
                 logger.warn(getStackTrace(e));
@@ -632,7 +641,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         return vertIDs;
     };
     
-    /**
+    /** 
      * Perform a query/search of the DB using the following constraints on the request
      * @param constraints - list of constraint objects
      * @return list of vertex IDs
