@@ -16,7 +16,7 @@ import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.DatabaseMetaData;  
 import java.sql.ResultSet; 
-import java.sql.SQLException; 
+import java.sql.SQLException;  
 import java.sql.Array;
 import java.sql.Timestamp;  
 import java.sql.Types;
@@ -182,42 +182,67 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void buildIndex(String filePath) throws StuccoDBException {
+        try {
+            String query = buildString("CREATE INDEX IF NOT EXISTS ip_ipint_index ON IP (ipInt);");
+            statement.executeUpdate(query);
+            query = buildString("CREATE INDEX IF NOT EXISTS addressrange_startipint_index ON AddressRange (startIPInt);");
+            statement.executeUpdate(query);
+            query = buildString("CREATE INDEX IF NOT EXISTS addressrange_endipint_index ON AddressRange (endIPInt);");
+            statement.executeUpdate(query);
+            query = buildString("CREATE INDEX IF NOT EXISTS edges_outvertid_index ON Edges (outVertID);");
+            statement.executeUpdate(query);
+            query = buildString("CREATE INDEX IF NOT EXISTS edges_invertid_index ON Edges (inVertID);");
+            statement.executeUpdate(query);
+        } catch (SQLException e) {
+                logger.warn(e.getLocalizedMessage());
+                logger.warn(getStackTrace(e));
+                throw new StuccoDBException("failed to add indexes");
+        }
+
         for (Object table : vertTables.keySet()) {
             try {
-                String tableName = table.toString();
-                DatabaseMetaData databaseMetaData = connection.getMetaData();
-                ResultSet rs = databaseMetaData.getColumns(null, null,  tableName.toLowerCase(), "tsv");
-                boolean columnExists = rs.next();
-                //creating a column for tsvector (tsv)
-                if (!columnExists) {
-                    String query = buildString("ALTER TABLE ", tableName, " ADD COLUMN tsv tsvector;");
-                    statement.executeUpdate(query);
-                    query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(sourceDocument, ' ') || ' ' || coalesce(array_to_string(description, ' '), ' '));");
-                    statement.executeUpdate(query);
-                    //setting index on tsv
-                    query = buildString("CREATE INDEX CONCURRENTLY ", tableName, "_tsv_idx ON ", tableName, " USING gin(tsv) WITH (fastupdate = off);");
-                    statement.executeUpdate(query);
-                }
-                //creating function and a trigger to update tsv every time sourceDocument is updated
-                boolean functionExists = executeSQLQuery("SELECT routine_name FROM information_schema.routines where routine_name = 'search_trigger';");
-                if (!functionExists) {
-                    String query = "CREATE FUNCTION search_trigger() RETURNS TRIGGER AS $search_trigger$ " +
-                        "BEGIN " +
-                            "new.tsv := to_tsvector('english', coalesce(array_to_string(new.description, ' '), ' ')) || to_tsvector('english', coalesce(new.sourceDocument, ' ')); " +
-                            "return new; " +
-                        "END " +
-                        "$search_trigger$ LANGUAGE plpgsql;";
-                    statement.executeUpdate(query);
-                }
-                String query = buildString("SELECT event_object_table FROM information_schema.triggers WHERE trigger_name = 'tsvectorupdate' AND event_object_table = '", tableName.toLowerCase(), "';");
-                boolean triggerExists = executeSQLQuery(query);
-                if (!triggerExists) {
-                    query = buildString("CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON ", tableName, " FOR EACH ROW EXECUTE PROCEDURE search_trigger();");
-                    statement.executeUpdate(query);
-                }
                 //creating index on name (b-tree for now, since some names could be the same, such as network flow and network connection both contains src and dest addresses as their names)
-                query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_name_index", " ON ", tableName, " (name);");
+                String tableName = table.toString();
+                String query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_name_index", " ON ", tableName, " (name);");
                 statement.executeUpdate(query);
+            
+                JSONObject vertTable = vertTables.getJSONObject(tableName);
+                if (vertTable.has("alias")) {
+                    DatabaseMetaData databaseMetaData = connection.getMetaData();
+                    ResultSet rs = databaseMetaData.getColumns(null, null,  tableName.toLowerCase(), "tsv");
+                    boolean columnExists = rs.next();
+                    //creating a column for tsvector (tsv)
+                    if (!columnExists) {
+                        query = buildString("ALTER TABLE ", tableName, " ADD COLUMN tsv tsvector;");
+                        statement.executeUpdate(query);
+                        // uncomment to set up gin on description and sourceDocument (need to alter if statement above also ....)
+                        //query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(sourceDocument, ' ') || ' ' || coalesce(array_to_string(description, ' '), ' '));");
+                        query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(array_to_string(alias, ' '), ' '));");
+                        statement.executeUpdate(query);
+                        //setting index on tsv
+                        query = buildString("CREATE INDEX CONCURRENTLY ", tableName, "_tsv_idx ON ", tableName, " USING gin(tsv) WITH (fastupdate = on);");
+                        statement.executeUpdate(query);
+                    }
+                    //creating function and a trigger to update tsv every time alian (sourceDocument) is updated
+                    boolean functionExists = executeSQLQuery("SELECT routine_name FROM information_schema.routines where routine_name = 'search_trigger';");
+                    if (!functionExists) {
+                        query = "CREATE FUNCTION search_trigger() RETURNS TRIGGER AS $search_trigger$ " +
+                            "BEGIN " +
+                            //    "new.tsv := to_tsvector('english', coalesce(array_to_string(new.description, ' '), ' ')) || to_tsvector('english', coalesce(new.sourceDocument, ' ')); " +
+                                "new.tsv := to_tsvector('english', coalesce(array_to_string(new.alias, ' '), ' ')); " +
+                                "return new; " +
+                            "END " +
+                            "$search_trigger$ LANGUAGE plpgsql;";
+                        statement.executeUpdate(query);
+                    }
+                    query = buildString("SELECT event_object_table FROM information_schema.triggers WHERE trigger_name = 'tsvectorupdate' AND event_object_table = '", tableName.toLowerCase(), "';");
+                    boolean triggerExists = executeSQLQuery(query);
+                    if (!triggerExists) {
+                        query = buildString("CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON ", tableName, " FOR EACH ROW EXECUTE PROCEDURE search_trigger();");
+                        statement.executeUpdate(query);
+                    }
+                }
+                /*
                 //creating index on vertexType
                 query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_vertextype_index", " ON ", tableName, " (vertexType);");
                 statement.executeUpdate(query);
@@ -227,6 +252,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                     query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_observabletype_index", " ON ", tableName, " (observableType);");
                     statement.executeUpdate(query);
                 }
+                */
             } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
                 logger.warn(getStackTrace(e));
@@ -657,11 +683,24 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         //TODO: check if constraints contain vertexType to avoid searching all tables
         String constraintsList = buildConstraintsSubquery(constraints);
         List<String> columnList = getConstraintProperties(constraints);
-        for (Object table : vertTables.keySet()) {
-            String tableName = table.toString();
-            if (containsAllColumns(tableName, columnList)) {
-                String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE ", constraintsList, ";");
-                vertIDs.addAll(getVertIDs(query));
+        if (columnList.contains("vertexType")) {
+            for (int i = 0; i < constraints.size(); i++) {
+                DBConstraint constraint = constraints.get(i);
+                String key = constraint.getProp();
+                if (key.equals("vertexType")) {
+                    String tableName = constraint.getVal().toString().replaceAll("'", "");
+                    String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE ", constraintsList, ";");
+                    vertIDs.addAll(getVertIDs(query));
+                    break;
+                }
+            }
+        } else {
+            for (Object table : vertTables.keySet()) {
+                String tableName = table.toString();
+                if (containsAllColumns(tableName, columnList)) {
+                    String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE ", constraintsList, ";");
+                    vertIDs.addAll(getVertIDs(query));
+                }
             }
         }
         

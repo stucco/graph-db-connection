@@ -34,7 +34,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "startIP": {
@@ -46,7 +46,7 @@
         "type": "bigint"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -76,15 +76,15 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "ipInt": {
-        "constraint": "bigint NOT NULL UNIQUE",
+        "constraint": "bigint NOT NULL",
         "type": "bigint"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -106,11 +106,11 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -136,11 +136,11 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -162,11 +162,11 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -192,7 +192,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
@@ -222,7 +222,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
@@ -248,7 +248,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
@@ -278,7 +278,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
@@ -308,11 +308,11 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -330,7 +330,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
@@ -364,11 +364,11 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -390,11 +390,11 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "description": {
@@ -420,7 +420,7 @@
         "type": "text"
       },
       "sourceDocument": {
-        "constraint": "text NOT NULL UNIQUE",
+        "constraint": "text NOT NULL",
         "type": "text"
       },
       "name": {
