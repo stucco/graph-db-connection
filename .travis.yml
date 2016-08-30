@@ -8,6 +8,9 @@ jdk:
 addons:
   - postgresql: "9.5"
 before_script:
+  - locate bin/postgres
+  - postgres -V
+  - psql --version
   - psql -c "CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;" -U postgres
   - sudo su -c "psql -c 'create database testdb with owner stucco;'" postgres
 env:
