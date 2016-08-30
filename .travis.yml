@@ -9,8 +9,8 @@ addons:
   postgresql: "9.5"
 before_script:
   - ps aux | grep postgres
-  - sudo su -c "psql -c 'CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;'" postgres
-  - sudo su -c "psql -c 'create database testdb with owner stucco;'" postgres
+  - psql -c "CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;" -U postgres
+  - psql -c "create database testdb with owner stucco;" -U postgres
 env:
   - STUCCO_DB_TYPE=POSTGRESQL STUCCO_DB_CONFIG="config/postgresql.yml" STUCCO_DB_INDEX_CONFIG=""
 after_success:
