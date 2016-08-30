@@ -6,12 +6,16 @@ jdk:
   - openjdk7
   - oraclejdk8
 addons:
-  - postgresql: 9.4
+  - postgresql: "9.5"
 before_script:
   - sudo updatedb
   - locate bin/postgres
   - ps aux | grep postgres
   - psql --version
+  - killall /usr/lib/postgresql/9.1/bin/postgres
+  - ps aux | grep postgres
+  - sudo su -c "/usr/lib/postgresql/9.5/bin/postgres -D /var/ramfs/postgresql/9.5/main -c config_file=/etc/postgresql/9.5/main/postgresql.conf" postgres
+  - ps aux | grep postgres
   - psql -c "CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;" -U postgres
   - sudo su -c "psql -c 'create database testdb with owner stucco;'" postgres
 env:
