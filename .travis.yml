@@ -8,6 +8,7 @@ jdk:
 addons:
   - postgresql: "9.5"
 before_script:
+  - sudo updatedb
   - locate bin/postgres
   - postgres -V
   - psql --version
