@@ -10,7 +10,7 @@ addons:
 before_script:
   - sudo updatedb
   - locate bin/postgres
-  - postgres -V
+  - ps aux | grep postgres
   - psql --version
   - psql -c "CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;" -U postgres
   - sudo su -c "psql -c 'create database testdb with owner stucco;'" postgres
