@@ -14,8 +14,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
-import java.sql.DatabaseMetaData;  
-import java.sql.ResultSet; 
+import java.sql.DatabaseMetaData;   
+import java.sql.ResultSet;  
 import java.sql.SQLException;  
 import java.sql.Array;
 import java.sql.Timestamp;  
@@ -129,7 +129,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 "('AddressRange', 'Campaign', 'Course_Of_Action', 'Exploit', 'Exploit_Target', " +
                 "'Incident', 'Indicator', 'IP', 'Malware', 'Observable', 'Threat_Actor', 'TTP', 'Vulnerability', 'Weakness');");
         }
-        String query = ("CREATE TABLE IF NOT EXISTS Edges (relation text NOT NULL, outVertID uuid NOT NULL, inVertID uuid NOT NULL, outVertTable tableEnum  NOT NULL, inVertTable tableEnum NOT NULL);");
+        String query = ("CREATE TABLE IF NOT EXISTS Edges (timestamp timestamp with time zone not null default now(), relation text NOT NULL, outVertID uuid NOT NULL, inVertID uuid NOT NULL, outVertTable tableEnum  NOT NULL, inVertTable tableEnum NOT NULL);");
         statement.executeUpdate(query);
     }
 
@@ -145,7 +145,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     private String buildCreateTableSQL(String tableName, JSONObject table) {
         String delimiter = "";
-        String query = buildString("CREATE TABLE IF NOT EXISTS ", tableName, " (_id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE, ");
+        String query = buildString(
+            "CREATE TABLE IF NOT EXISTS ", 
+            tableName, 
+            " (_id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE, ",
+            "timestamp timestamp with time zone DEFAULT now() NOT NULL, ",
+            "modifieddate timestamp with time zone DEFAULT now() NOT NULL, "
+        );
         for (String columnName : columnOrder) {
             if (table.has(columnName)) {
                 String constraint = table.getJSONObject(columnName).getString("constraint");
@@ -273,6 +279,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         String id = null;
         try {
             String tableName = properties.get("vertexType").toString();
+            System.out.println("tableName ->> " + tableName);
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.ADD_VERTEX);
             JSONObject table = vertTables.getJSONObject(tableName);
             for (Object key : table.keySet()) {
