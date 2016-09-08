@@ -14,7 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
-import java.sql.DatabaseMetaData;   
+import java.sql.DatabaseMetaData;    
 import java.sql.ResultSet;  
 import java.sql.SQLException;  
 import java.sql.Array;
@@ -106,6 +106,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         try {
             createTables();
+            buildIndex(null);
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
