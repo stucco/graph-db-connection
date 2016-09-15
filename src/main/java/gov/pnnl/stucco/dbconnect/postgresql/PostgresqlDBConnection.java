@@ -196,9 +196,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             statement.executeUpdate(query);
             query = buildString("CREATE INDEX IF NOT EXISTS addressrange_endipint_index ON AddressRange (endIPInt);");
             statement.executeUpdate(query);
-            query = buildString("CREATE INDEX IF NOT EXISTS edges_outvertid_index ON Edges (outVertID);");
+            query = buildString("CREATE INDEX IF NOT EXISTS edges_outvertid_index ON Edges USING HASH (outVertID);");
             statement.executeUpdate(query);
-            query = buildString("CREATE INDEX IF NOT EXISTS edges_invertid_index ON Edges (inVertID);");
+            query = buildString("CREATE INDEX IF NOT EXISTS edges_invertid_index ON Edges USING HASH (inVertID);");
             statement.executeUpdate(query);
         } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
