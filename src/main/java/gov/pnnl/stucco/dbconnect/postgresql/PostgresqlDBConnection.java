@@ -13,7 +13,7 @@ import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement.API;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.sql.PreparedStatement;
+import java.sql.PreparedStatement; 
 import java.sql.DatabaseMetaData;    
 import java.sql.ResultSet;  
 import java.sql.SQLException;  
@@ -280,7 +280,6 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         String id = null;
         try {
             String tableName = properties.get("vertexType").toString();
-            System.out.println("tableName ->> " + tableName);
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.ADD_VERTEX);
             JSONObject table = vertTables.getJSONObject(tableName);
             for (Object key : table.keySet()) {
@@ -1234,7 +1233,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             if (Columns.valueOf(columnName).type == TYPE.ARRAY) {
                 Array array = rs.getArray(columnName);
                 if (array != null) {
-                    Set<Object> value = new HashSet<Object>(Arrays.asList(array.getArray()));
+                    Object value = new HashSet<Object>(Arrays.asList((Object[]) array.getArray()));
                     map.put(columnName, value);
                 }
             } else {
@@ -1311,7 +1310,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             Object value = v.get(column);
             switch (Columns.valueOf(column).type) {
                 case ARRAY:
-                    value = jsonArrayToList((JSONArray)value);
+                    value = jsonArrayToSet((JSONArray)value);
                     break;
                 case LONG:
                     value = ((Number)value).longValue();
@@ -1321,5 +1320,18 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         }
 
         return vert;
+    }
+
+    /**
+     * converts a JSONArray to a Set
+     * @param a
+     * @return
+     */
+    static protected Set<Object> jsonArrayToSet(JSONArray a){
+        Set<Object> s = new HashSet<Object>();
+        for(int i=0; i<a.length(); i++){
+            s.add(a.get(i));
+        }
+        return s;
     }
 }
