@@ -882,7 +882,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private static String normalizeValue(Object value) {
         String returnValue = null;
         if (value instanceof Collection) {
-            returnValue = buildArrayString((List)value);
+            returnValue = buildArrayString((Collection)value);
         } else {
             returnValue = buildString("'", value, "'");
         }
@@ -897,10 +897,10 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @param list - list of values to be inserted into table
      * @return string representation of list values acceptable by sql
      */
-    private static String buildArrayString(List<String> list) {
+    private static String buildArrayString(Collection list) {
         String delimiter = "";
         StringBuilder sb = new StringBuilder("'{");
-        for (String value : list) {
+        for (Object value : list) {
             sb.append(buildString(delimiter, "\"", value, "\""));
             delimiter = ", ";
         }
@@ -1234,7 +1234,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             if (Columns.valueOf(columnName).type == TYPE.ARRAY) {
                 Array array = rs.getArray(columnName);
                 if (array != null) {
-                    Object value = Arrays.asList((Object[])array.getArray());
+                    Set<Object> value = new HashSet<Object>(Arrays.asList(array.getArray()));
                     map.put(columnName, value);
                 }
             } else {
