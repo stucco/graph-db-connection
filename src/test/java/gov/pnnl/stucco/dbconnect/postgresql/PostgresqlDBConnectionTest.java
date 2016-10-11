@@ -496,41 +496,41 @@ public class PostgresqlDBConnectionTest extends TestCase {
 
             //getOutEdges
             List<Map<String, Object>> flowOutEdges = conn.getOutEdges(flowID);
-            assertTrue(flowOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", srcAddressID); put("relation", "Sub-Observable");}}));
-            assertTrue(flowOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", destAddressID); put("relation", "Sub-Observable");}}));
+            assertTrue(flowOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", srcAddressID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
+            assertTrue(flowOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", destAddressID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             List<Map<String, Object>> srcAddressOutEdges = conn.getOutEdges(srcAddressID);
-            assertTrue(srcAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcIPID); put("relation", "Sub-Observable");}}));
-            assertTrue(srcAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcPortID); put("relation", "Sub-Observable");}}));
+            assertTrue(srcAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcIPID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "IP");}}));
+            assertTrue(srcAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcPortID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             List<Map<String, Object>> destAddressOutEdges = conn.getOutEdges(destAddressID);
-            assertTrue(destAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destIPID); put("relation", "Sub-Observable");}}));
-            assertTrue(destAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destPortID); put("relation", "Sub-Observable");}}));
+            assertTrue(destAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destIPID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "IP");}}));
+            assertTrue(destAddressOutEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destPortID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             //getInEdges
             List<Map<String, Object>> srcAddressInEdges = conn.getInEdges(srcAddressID);
             assertTrue(srcAddressInEdges.size() == 1);
-            assertTrue(srcAddressInEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", srcAddressID); put("relation", "Sub-Observable");}}));
+            assertTrue(srcAddressInEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", srcAddressID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             List<Map<String, Object>> destAddressInEdges = conn.getInEdges(destAddressID);
             assertTrue(destAddressInEdges.size() == 1);
-            assertTrue(destAddressInEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", destAddressID); put("relation", "Sub-Observable");}}));
+            assertTrue(destAddressInEdges.contains(new HashMap<String, Object>(){{put("outVertID", flowID); put("inVertID", destAddressID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             List<Map<String, Object>> srcIPInEdges = conn.getInEdges(srcIPID);
             assertTrue(srcIPInEdges.size() == 1);
-            assertTrue(srcIPInEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcIPID); put("relation", "Sub-Observable");}}));
+            assertTrue(srcIPInEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcIPID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "IP");}}));
 
             List<Map<String, Object>> destIPInEdges = conn.getInEdges(destIPID);
             assertTrue(destIPInEdges.size() == 1);
-            assertTrue(destIPInEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destIPID); put("relation", "Sub-Observable");}})); 
+            assertTrue(destIPInEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destIPID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "IP");}})); 
 
             List<Map<String, Object>> srcPortInEdges = conn.getInEdges(srcPortID);
             assertTrue(srcPortInEdges.size() == 1);
-            assertTrue(srcPortInEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcPortID); put("relation", "Sub-Observable");}}));
+            assertTrue(srcPortInEdges.contains(new HashMap<String, Object>(){{put("outVertID", srcAddressID); put("inVertID", srcPortID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             List<Map<String, Object>> destPortInEdges = conn.getInEdges(destPortID);
             assertTrue(destPortInEdges.size() == 1);
-            assertTrue(destPortInEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destPortID); put("relation", "Sub-Observable");}}));
+            assertTrue(destPortInEdges.contains(new HashMap<String, Object>(){{put("outVertID", destAddressID); put("inVertID", destPortID); put("relation", "Sub-Observable");put("outVertTable", "Observable"); put("inVertTable", "Observable");}}));
 
             //List<String> getInVertIDsByRelation(String outVertID, String relation)
             List<String> flowInVertIDs = conn.getInVertIDsByRelation(flowID, "Sub-Observable");
@@ -639,5 +639,3 @@ public class PostgresqlDBConnectionTest extends TestCase {
         }
     }
 }
-
-
