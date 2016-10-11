@@ -60,6 +60,20 @@ public interface DBConnectionAlignment {
     public List<Map<String, Object>> getInEdges(String inVertID);
 
     /**
+     * returns list of edge info maps for the outgoing edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getOutEdgesPage(String outVertID, int offset, int limit);
+
+    /**
+     * returns list of edge info maps for the incoming edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getInEdgesPage(String inVertID, int offset, int limit);
+
+    /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
      * @param v1 - vertex end point
      * @param relation - the relationship type of the edge
@@ -119,6 +133,13 @@ public interface DBConnectionAlignment {
      * @return list of vertex IDs
      */
     public List<String> getVertIDsByConstraints(List<DBConstraint> constraints);
+
+    /**
+     * Perform a query/search of the DB using the following constraints on the request
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offcet, int limit);
     
     /**
      * Given two vertices and a relation, remove the edge

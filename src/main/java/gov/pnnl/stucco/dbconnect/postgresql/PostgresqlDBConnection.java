@@ -15,11 +15,13 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.PreparedStatement; 
 import java.sql.DatabaseMetaData;    
-import java.sql.ResultSet;  
-import java.sql.SQLException;  
+import java.sql.ResultSet;   
+import java.sql.SQLException;   
 import java.sql.Array;
 import java.sql.Timestamp;  
 import java.sql.Types;
+
+import org.postgresql.util.PGobject;
     
 import java.io.PrintWriter;  
 import java.io.StringWriter;
@@ -60,6 +62,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private Connection connection;
     private Statement statement;
     private PostgresqlDBPreparedStatement ps;
+    private PGobject uuid;
 
     static {
         try {
@@ -76,6 +79,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         this.configuration = new HashMap<String, Object>();
         this.configuration.putAll(configuration);
         logger = LoggerFactory.getLogger(PostgresqlDBConnection.class);
+        uuid = new PGobject();
+        uuid.setType("uuid");
         //vertIDCache = new HashMap<String, String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
         //vertIDCacheRecentlyRead = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
     }
@@ -86,7 +91,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * If the system is already open() not other connections will be made from this thread
      */
     @Override
-    public void open() {
+    public void open() { 
         //PostgreSQL connecting url has following form: jdbc:postgresql://hostname:port/database
         String hostname = configuration.get("hostname").toString();
         String port = configuration.get("port").toString();
@@ -103,7 +108,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             logger.warn(getStackTrace(e));
             throw new StuccoDBException("could not create PostgreSQL client connection");
         }
-
+ 
         try {
             createTables();
             buildIndex(null);
@@ -337,7 +342,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * Retrieves the vertex's property map as referenced by the vertex ID
      * @param id as per the DB
      * @return a property map of the vertex, user must know based on the key how to recast the object type to use its value
-     */
+     */  
     @Override
     public Map<String, Object> getVertByID(String id) {
         sanityCheck("get vert", id, "id");
@@ -347,7 +352,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             String tableName = key.toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERT_BY_ID);
             try {
-                preparedStatement.setObject(1, UUID.fromString(id));
+                uuid.setValue(id);
+                preparedStatement.setObject(1, uuid);
                 ResultSet rs = preparedStatement.executeQuery();
                 if (rs.next()) {
                     vertex = vertResultSetToMap(tableName, rs);
@@ -408,7 +414,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         return vertexType;
     }
-
+ 
     /**
      * returns list of edge info maps for the outgoing edges of this vertex
      * @param outVertID
@@ -436,6 +442,34 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     };
 
     /**
+     * returns list of edge info maps for the outgoing edges of this vertex
+     * @param outVertID
+     * @return list of edge property maps with matching outVertID
+     */
+    @Override
+    public List<Map<String, Object>> getOutEdgesPage(String outVertID, int offset, int limit) {
+        sanityCheck("get edges", outVertID, "outVertID");
+
+        List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_EDGES_PAGE);
+        try {
+            preparedStatement.setObject(1, UUID.fromString(outVertID));
+            preparedStatement.setInt(2, offset);
+            preparedStatement.setInt(3, limit);
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> map = edgesResultSetToMap(rs);
+                edges.add(map);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get out edges!");
+        }
+        return edges;
+    };
+
+    /**
      * returns list of edge info maps for the incoming edges of this vertex
      * @param inVertID
      * @return list of edge property maps with matching inVertID
@@ -446,8 +480,39 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_EDGES);
+
         try {
             preparedStatement.setObject(1, UUID.fromString(inVertID));
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> map = edgesResultSetToMap(rs);
+                edges.add(map);
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("Failed to get in edges!");
+        }
+
+        return edges;     
+    }
+
+    /**
+     * returns list of edge info maps for the incoming edges of this vertex
+     * @param inVertID
+     * @return list of edge property maps with matching inVertID
+     */
+    @Override
+    public List<Map<String, Object>> getInEdgesPage(String inVertID, int offset, int limit) {
+        sanityCheck("get edges", inVertID, "inVertID");
+
+        List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
+        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_EDGES_PAGE);
+
+        try {
+            preparedStatement.setObject(1, UUID.fromString(inVertID));
+            preparedStatement.setInt(2, offset);
+            preparedStatement.setInt(3, limit);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 Map<String, Object> map = edgesResultSetToMap(rs);
@@ -676,7 +741,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         return vertIDs;
     };
-    
+     
     /** 
      * Perform a query/search of the DB using the following constraints on the request
      * @param constraints - list of constraint objects
@@ -706,6 +771,44 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 String tableName = table.toString();
                 if (containsAllColumns(tableName, columnList)) {
                     String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE ", constraintsList, ";");
+                    vertIDs.addAll(getVertIDs(query));
+                }
+            }
+        }
+        
+        return vertIDs;
+    };
+
+    /** 
+     * Perform a query/search of the DB using the following constraints on the request
+     * @param constraints - list of constraint objects
+     * @param offset - offset from start
+     * @param limit - number of records
+     * @return list of vertex IDs
+     */
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offset, int limit) {
+        sanityCheck(constraints);
+
+        List<String> vertIDs = new ArrayList<String>();
+        //TODO: check if constraints contain vertexType to avoid searching all tables
+        String constraintsList = buildConstraintsSubquery(constraints);
+        List<String> columnList = getConstraintProperties(constraints);
+        if (columnList.contains("vertexType")) {
+            for (int i = 0; i < constraints.size(); i++) {
+                DBConstraint constraint = constraints.get(i);
+                String key = constraint.getProp();
+                if (key.equals("vertexType")) {
+                    String tableName = constraint.getVal().toString().replaceAll("'", "");
+                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                    vertIDs.addAll(getVertIDs(query));
+                    break;
+                }
+            }
+        } else {
+            for (Object table : vertTables.keySet()) {
+                String tableName = table.toString();
+                if (containsAllColumns(tableName, columnList)) {
+                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
                     vertIDs.addAll(getVertIDs(query));
                 }
             }
@@ -823,7 +926,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private void removeEdgeByVertID(String vertID) {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.REMOVE_EDGE_BY_VERT_ID);
         try {
-            UUID uuid = UUID.fromString(vertID);
+            uuid.setValue(vertID);
             preparedStatement.setObject(1, uuid);
             preparedStatement.setObject(2, uuid);
             preparedStatement.executeUpdate();
@@ -1255,6 +1358,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         map.put("outVertID", rs.getString("outVertID"));
         map.put("inVertID", rs.getString("inVertID"));
         map.put("relation", rs.getString("relation"));
+        map.put("outVertTable", rs.getString("outVertTable"));
+        map.put("inVertTable", rs.getString("inVertTable"));
 
         return map;
     }

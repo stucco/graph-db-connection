@@ -20,10 +20,10 @@ public class PostgresqlDBPreparedStatement {
 	private Connection connection;
 	private Map<String, Map<API, PreparedStatement>> preparedStatements;
 
-	/**
+	/** 
 	 * comparator to sort and insert keys into specified positions in PreparedStatements
 	 */
-	public static class ColumnIndexComparator implements Comparator<String> {
+	public class ColumnIndexComparator implements Comparator<String> {
 		public int compare(String c1, String c2) {
 			int c1index = Columns.valueOf(c1).index;
 			int c2index = Columns.valueOf(c2).index;
@@ -101,10 +101,10 @@ public class PostgresqlDBPreparedStatement {
 			public String getStatement(String... args) {
 				return String.format("INSERT INTO %s (%s) VALUES (%s);", args[0], args[1], args[2]);
 			}
-		},
+		}, 
 		GET_VERT_BY_ID ("getVertByID", TABLE.VERTEX_TABLE) {
 			public String getStatement(String... args) { 
-				return String.format("SELECT * FROM %s WHERE _id = ?;", args[0]); 
+				return String.format("SELECT * FROM %s WHERE _id = ?;", args[0]);
 			}
 		},
 		GET_VERT_COUNT ("getVertCount", TABLE.VERTEX_TABLE) {
@@ -135,6 +135,16 @@ public class PostgresqlDBPreparedStatement {
 		ADD_EDGE ("addEdges", TABLE.EDGE_TABLE) {
 			public String getStatement(String... args) {
 				return "INSERT INTO Edges (relation, outVertID, inVertID, outVertTable, inVertTable) VALUES (?, ?, ?, CAST(? AS tableenum), CAST(? AS tableenum));";
+			}
+		},
+		GET_OUT_EDGES_PAGE ("getOutEdgesPage", TABLE.EDGE_TABLE) {
+			public String getStatement(String... args) {
+				return "SELECT * FROM Edges WHERE outVertID = ? order by timestamp desc offset ? limit ?;";
+			}
+		},
+		GET_IN_EDGES_PAGE ("getInEdgesPage", TABLE.EDGE_TABLE) {
+			public String getStatement(String... args) {
+				return "SELECT * FROM Edges WHERE inVertID = ? order by timestamp desc offset ? limit ?;";
 			}
 		},
 		GET_OUT_EDGES ("getOutEdges", TABLE.EDGE_TABLE) {
@@ -274,7 +284,7 @@ public class PostgresqlDBPreparedStatement {
 	}
 
 
-	private static String getColumnNames(JSONObject columns) {
+	private String getColumnNames(JSONObject columns) {
 		String[] columnNames = JSONObject.getNames(columns);
 		Arrays.sort(columnNames, new ColumnIndexComparator());
 
@@ -314,4 +324,16 @@ public class PostgresqlDBPreparedStatement {
 			}
 		}
 	}
+
+	/**
+   * concatenates multiple substrings 
+   */
+  private static String buildString(Object... substrings) {
+      StringBuilder str = new StringBuilder();
+      for (Object substring : substrings) {
+          str.append(substring);
+      }
+
+      return str.toString();
+  }
 }

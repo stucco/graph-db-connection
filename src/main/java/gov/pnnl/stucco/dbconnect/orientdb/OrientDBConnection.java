@@ -250,6 +250,22 @@ public class OrientDBConnection extends DBConnectionBase {
         
         return vertIDs;
     }
+
+    @Override
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offset, int limit) {
+        if(constraints == null)
+            throw new NullPointerException();
+        
+        String query = "SELECT * FROM V OFFSET " + offset + " LIMIT " + limit + " " + buildQueryConstraintSql(constraints);
+        
+        List<OrientVertex> verts = this.getVerticesFromQuery(query);
+        List<String> vertIDs = new ArrayList<String>();
+        for (OrientVertex vertID : verts ){
+            vertIDs.add(vertID.getId().toString());
+        }
+        
+        return vertIDs;
+    }
     
     /** Wraps a query within a WHERE query adding constraints on the result. */
     private String wrapQueryWithWhereClause(String sqlToWrap, List<DBConstraint> constraints) {
@@ -706,6 +722,75 @@ public class OrientDBConnection extends DBConnectionBase {
             edgeProperties.put("outVertID", outVertID);
             edgeProperties.put("relation", relation);
             edgePropertyList.add(edgeProperties);
+        }
+
+        return edgePropertyList;
+    }
+
+    //TODO: profile this paging implementation, and possibly change
+    @Override
+    public List<Map<String, Object>> getOutEdgesPage(String outVertID, int offset, int limit) {
+        if(outVertID == null || outVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        
+        Object query_ret = getVertByID(outVertID);
+        if(query_ret == null){
+            logger.warn("getOutVertIDs could not find inVertID:" + outVertID);
+            throw new IllegalArgumentException("missing or invalid outVertID");
+        }
+        
+        String query = String.format("SELECT expand(outE()) FROM %s", outVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        if (results.size() > offset) {
+            int end = Math.min(results.size(), offset + limit);
+            for (int i = offset; i < end; i++) {
+                OrientEdge item = results.get(i);
+                Map<String,Object> edgeProperties = new HashMap<String, Object>();
+                String relation = item.getLabel();
+                String inVertID = item.getInVertex().getIdentity().toString();
+                
+                edgeProperties.put("inVertID", inVertID);
+                edgeProperties.put("outVertID", outVertID);
+                edgeProperties.put("relation", relation);
+                edgePropertyList.add(edgeProperties);
+            }
+        }
+        
+        return edgePropertyList;
+    }
+
+    //TODO: profile this paging implementation, and possibly change
+    @Override
+    public List<Map<String, Object>> getInEdgesPage(String inVertID, int offset, int limit) {
+        if(inVertID == null || inVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+        }
+
+        Object query_ret = getVertByID(inVertID);
+        if(query_ret == null){
+            logger.warn("getInVertIDs could not find inVertID:" + inVertID);
+            throw new IllegalArgumentException("missing or invalid inVertID");
+        }
+
+        String query = String.format("SELECT expand(inE()) FROM %s", inVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        if (results.size() > offset) {
+            int end = Math.min(results.size(), offset + limit);
+            for (int i = offset; i < end; i++) {
+                OrientEdge item = results.get(i);
+                Map<String,Object> edgeProperties = new HashMap<String, Object>();
+                String relation = item.getLabel();
+                String outVertID = item.getOutVertex().getIdentity().toString();
+
+                edgeProperties.put("inVertID", inVertID);
+                edgeProperties.put("outVertID", outVertID);
+                edgeProperties.put("relation", relation);
+                edgePropertyList.add(edgeProperties);
+            }
         }
 
         return edgePropertyList;
