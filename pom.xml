@@ -14,10 +14,15 @@
 
 	<dependencies>
 		<dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>9.3-1100-jdbc41</version>
-    </dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<dependency>
+	      <groupId>org.postgresql</groupId>
+	      <artifactId>postgresql</artifactId>
+	      <version>9.3-1100-jdbc41</version>
+	    </dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -113,10 +118,11 @@
 		</plugins>
 		<resources>
 			<resource>
-  			<directory>src/main/resources</directory>
-  			<includes>
-  				<include>postgresql/tables.json</include>
-  			</includes>
+	  			<directory>src/main/resources</directory>
+	  			<includes>
+	  				<include>postgresql/tables.json</include>
+	  				<include>postgresql/PostgresqlDBInitialization.sql</include>
+	  			</includes>
 			</resource>
   	</resources>
 	</build>
