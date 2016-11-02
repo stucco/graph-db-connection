@@ -13,6 +13,7 @@ import java.util.Comparator;
 import org.apache.commons.lang3.StringUtils;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 public class PostgresqlDBPreparedStatement { 
 
@@ -49,7 +50,7 @@ public class PostgresqlDBPreparedStatement {
 	 * etc...
 	 */
 	public enum TYPE {
-		TEXT, ARRAY, LONG, TIMESTAMP;
+		TEXT, ARRAY, LONG, TIMESTAMP, UUID;
 	}
 
 	/**
@@ -255,9 +256,9 @@ public class PostgresqlDBPreparedStatement {
 					if (api.function.equals("addVertex")) {
 						for (Object table : vertTables.keySet()) {
 							String tableName = table.toString();
-							JSONObject json = vertTables.getJSONObject(tableName);
-							String columnNames = getColumnNames(json);
-							String values = StringUtils.repeat("?", ", ", json.length());
+							JSONObject json = vertTables.getJSONObject(tableName).getJSONObject("columns");
+							String columnNames = getColumnNames(vertTables.getJSONObject(tableName).getJSONArray("order"));
+							String values = StringUtils.repeat("?", ", ", json.length() - 3);
 							String statement = api.getStatement(tableName, columnNames, values);
 							Map<API, PreparedStatement> map = new HashMap<API, PreparedStatement>();
 							map.put(api, connection.prepareStatement(statement,  Statement.RETURN_GENERATED_KEYS));
@@ -284,11 +285,16 @@ public class PostgresqlDBPreparedStatement {
 	}
 
 
-	private String getColumnNames(JSONObject columns) {
-		String[] columnNames = JSONObject.getNames(columns);
-		Arrays.sort(columnNames, new ColumnIndexComparator());
+	private String getColumnNames(JSONArray order) {
+		StringBuilder columnNames = new StringBuilder();
+		String delimiter = "";
+		for (int i = 3; i < order.length(); i++) {
+			columnNames.append(delimiter);
+			columnNames.append(order.getString(i));
+			delimiter = ", ";
+		}
 
-		return arrayToString(columnNames);
+		return columnNames.toString();
 	}
 
 	private static String arrayToString(String[] array) {

@@ -4,7 +4,7 @@ import gov.pnnl.stucco.dbconnect.Condition;
 import gov.pnnl.stucco.dbconnect.DBConnectionBase;
 import gov.pnnl.stucco.dbconnect.DBConstraint;
 import gov.pnnl.stucco.dbconnect.StuccoDBException;
-
+ 
 import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement;
 import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement.Columns;
 import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement.TYPE;
@@ -14,14 +14,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.PreparedStatement; 
-import java.sql.DatabaseMetaData;    
 import java.sql.ResultSet;   
 import java.sql.SQLException;   
 import java.sql.Array;
-import java.sql.Timestamp;  
-import java.sql.Types;
+import java.sql.Timestamp;   
+import java.sql.Types; 
 
-import org.postgresql.util.PGobject;
+import org.postgresql.copy.CopyManager; 
+import org.postgresql.copy.CopyIn;
+import org.postgresql.core.BaseConnection;
     
 import java.io.PrintWriter;  
 import java.io.StringWriter;
@@ -31,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream; 
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -40,9 +42,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays; 
 import java.util.Collection;
-import java.util.UUID;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -54,19 +56,24 @@ import org.slf4j.LoggerFactory;
 public class PostgresqlDBConnection extends DBConnectionBase {
     
     private static final String POSTGRESQL_TABLES = "postgresql/tables.json";
-    private static final String[] columnOrder = {"vertexType", "observableType", "name", "alias", "ipInt", "startIP", 
-        "startIPInt", "endIP", "endIPInt", "description", "shortDescription", "details", "source", "sourceDocument", "location", "publishedDate"};
     private static final JSONObject vertTables;
+    private static final JSONObject tables;
     private static Logger logger;
     private Map<String, Object> configuration;
     private Connection connection;
     private Statement statement;
     private PostgresqlDBPreparedStatement ps;
-    private PGobject uuid;
+
+    private String hostname;
+    private String port;
+    private String dbName;
+    private String url;
+    private String username;
+    private String password;
 
     static {
         try {
-            JSONObject tables = new JSONObject(IOUtils.toString(PostgresqlDBConnection.class.getClassLoader().getResourceAsStream(POSTGRESQL_TABLES), "UTF-8"));
+            tables = new JSONObject(IOUtils.toString(PostgresqlDBConnection.class.getClassLoader().getResourceAsStream(POSTGRESQL_TABLES), "UTF-8"));
             vertTables = tables.getJSONObject("vertices");
         } catch (IOException e) {
             logger.warn(e.getLocalizedMessage());
@@ -79,10 +86,21 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         this.configuration = new HashMap<String, Object>();
         this.configuration.putAll(configuration);
         logger = LoggerFactory.getLogger(PostgresqlDBConnection.class);
-        uuid = new PGobject();
-        uuid.setType("uuid");
-        //vertIDCache = new HashMap<String, String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
-        //vertIDCacheRecentlyRead = new HashSet<String>((int) (VERT_ID_CACHE_LIMIT * 1.5));
+
+        hostname = configuration.get("hostname").toString();
+        port = configuration.get("port").toString();
+        dbName = configuration.get("database").toString();
+        url = buildString("jdbc:postgresql://", hostname, ":", port, "/", dbName);
+        username = (configuration.containsKey("username")) ? configuration.get("username").toString() : null;
+        password = (configuration.containsKey("password")) ? configuration.get("password").toString() : null;
+        initDB();
+    }
+
+    private void initDB() {
+        open();
+        PostgresqlDBInitialization initer = new PostgresqlDBInitialization(statement, tables);
+        initer.initDB();
+        close();
     }
 
     /**
@@ -92,13 +110,6 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public void open() { 
-        //PostgreSQL connecting url has following form: jdbc:postgresql://hostname:port/database
-        String hostname = configuration.get("hostname").toString();
-        String port = configuration.get("port").toString();
-        String dbName = configuration.get("database").toString();
-        String url = buildString("jdbc:postgresql://", hostname, ":", port, "/", dbName);
-        String username = (configuration.containsKey("username")) ? configuration.get("username").toString() : null;
-        String password = (configuration.containsKey("password")) ? configuration.get("password").toString() : null;
         try {
             connection = DriverManager.getConnection(url, username, password);
             statement = connection.createStatement(); 
@@ -108,67 +119,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             logger.warn(getStackTrace(e));
             throw new StuccoDBException("could not create PostgreSQL client connection");
         }
- 
-        try {
-            createTables();
-            buildIndex(null);
-        } catch (SQLException e) {
-            logger.warn(e.getLocalizedMessage());
-            logger.warn(getStackTrace(e));
-            throw new StuccoDBException("could not create PostgreSQL tables");
-        } 
     };
-
-    private void createTables() throws SQLException {
-        statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
-        //creating tables for vertices
-        for (Object key : vertTables.keySet()) {
-            String tableName = key.toString();
-            JSONObject table = vertTables.getJSONObject(tableName);
-            String query = buildCreateTableSQL(tableName, table);
-            statement.executeUpdate(query);
-        } 
-        //creating tables for edges
-        boolean enum_exists = selectExists("SELECT EXISTS (SELECT * FROM pg_type WHERE typname = 'tableenum');");
-        if (!enum_exists) {
-            statement.executeUpdate("CREATE TYPE tableenum AS ENUM " + 
-                "('AddressRange', 'Campaign', 'Course_Of_Action', 'Exploit', 'Exploit_Target', " +
-                "'Incident', 'Indicator', 'IP', 'Malware', 'Observable', 'Threat_Actor', 'TTP', 'Vulnerability', 'Weakness');");
-        }
-        String query = ("CREATE TABLE IF NOT EXISTS Edges (timestamp timestamp with time zone not null default now(), relation text NOT NULL, outVertID uuid NOT NULL, inVertID uuid NOT NULL, outVertTable tableEnum  NOT NULL, inVertTable tableEnum NOT NULL);");
-        statement.executeUpdate(query);
-    }
-
-    private boolean selectExists(String query) throws SQLException {
-        boolean exists = false;
-        ResultSet rs = statement.executeQuery(query);
-        if (rs.next()) {
-            exists = rs.getBoolean(1);
-        }
-
-        return exists;
-    }
-
-    private String buildCreateTableSQL(String tableName, JSONObject table) {
-        String delimiter = "";
-        String query = buildString(
-            "CREATE TABLE IF NOT EXISTS ", 
-            tableName, 
-            " (_id uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL UNIQUE, ",
-            "timestamp timestamp with time zone DEFAULT now() NOT NULL, ",
-            "modifieddate timestamp with time zone DEFAULT now() NOT NULL, "
-        );
-        for (String columnName : columnOrder) {
-            if (table.has(columnName)) {
-                String constraint = table.getJSONObject(columnName).getString("constraint");
-                query = buildString(query, delimiter, columnName, " ", constraint);
-                delimiter = ", ";
-            }
-        }
-        query = buildString(query, ");");
-        
-        return query;
-    }
 
     /**
      * Close the DB and commit any transactions, for certain system it may be a NO-OP
@@ -176,7 +127,6 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     @Override
     public void close() {
         try {
-        //    statement.executeUpdate("DROP TABLE addressrange, campaign, course_of_action, exploit, exploit_target, incident, indicator, ip, observable, threat_actor, ttp, vulnerability, weakness, malware;");
             connection.close();
             statement.close();
             ps.close();
@@ -189,89 +139,12 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
     /**
      * Builds the index for full text search of sourceDocument
+     * function implementation is in PostgresQLDBInit class
      * @param indexConfig - is not required for postgresql
      * @throws StuccoDBException 
      */
     @Override
-    public void buildIndex(String filePath) throws StuccoDBException {
-        try {
-            String query = buildString("CREATE INDEX IF NOT EXISTS ip_ipint_index ON IP (ipInt);");
-            statement.executeUpdate(query);
-            query = buildString("CREATE INDEX IF NOT EXISTS addressrange_startipint_index ON AddressRange (startIPInt);");
-            statement.executeUpdate(query);
-            query = buildString("CREATE INDEX IF NOT EXISTS addressrange_endipint_index ON AddressRange (endIPInt);");
-            statement.executeUpdate(query);
-            query = buildString("CREATE INDEX IF NOT EXISTS edges_outvertid_index ON Edges USING HASH (outVertID);");
-            statement.executeUpdate(query);
-            query = buildString("CREATE INDEX IF NOT EXISTS edges_invertid_index ON Edges USING HASH (inVertID);");
-            statement.executeUpdate(query);
-        } catch (SQLException e) {
-                logger.warn(e.getLocalizedMessage());
-                logger.warn(getStackTrace(e));
-                throw new StuccoDBException("failed to add indexes");
-        }
-
-        for (Object table : vertTables.keySet()) {
-            try {
-                //creating index on name (b-tree for now, since some names could be the same, such as network flow and network connection both contains src and dest addresses as their names)
-                String tableName = table.toString();
-                String query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_name_index", " ON ", tableName, " (name);");
-                statement.executeUpdate(query);
-            
-                JSONObject vertTable = vertTables.getJSONObject(tableName);
-                if (vertTable.has("alias")) {
-                    DatabaseMetaData databaseMetaData = connection.getMetaData();
-                    ResultSet rs = databaseMetaData.getColumns(null, null,  tableName.toLowerCase(), "tsv");
-                    boolean columnExists = rs.next();
-                    //creating a column for tsvector (tsv)
-                    if (!columnExists) {
-                        query = buildString("ALTER TABLE ", tableName, " ADD COLUMN tsv tsvector;");
-                        statement.executeUpdate(query);
-                        // uncomment to set up gin on description and sourceDocument (need to alter if statement above also ....)
-                        //query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(sourceDocument, ' ') || ' ' || coalesce(array_to_string(description, ' '), ' '));");
-                        query = buildString("UPDATE ", tableName, " SET tsv = to_tsvector('english', coalesce(array_to_string(alias, ' '), ' '));");
-                        statement.executeUpdate(query);
-                        //setting index on tsv
-                        query = buildString("CREATE INDEX CONCURRENTLY ", tableName, "_tsv_idx ON ", tableName, " USING gin(tsv) WITH (fastupdate = on);");
-                        statement.executeUpdate(query);
-                    }
-                    //creating function and a trigger to update tsv every time alian (sourceDocument) is updated
-                    boolean functionExists = executeSQLQuery("SELECT routine_name FROM information_schema.routines where routine_name = 'search_trigger';");
-                    if (!functionExists) {
-                        query = "CREATE FUNCTION search_trigger() RETURNS TRIGGER AS $search_trigger$ " +
-                            "BEGIN " +
-                            //    "new.tsv := to_tsvector('english', coalesce(array_to_string(new.description, ' '), ' ')) || to_tsvector('english', coalesce(new.sourceDocument, ' ')); " +
-                                "new.tsv := to_tsvector('english', coalesce(array_to_string(new.alias, ' '), ' ')); " +
-                                "return new; " +
-                            "END " +
-                            "$search_trigger$ LANGUAGE plpgsql;";
-                        statement.executeUpdate(query);
-                    }
-                    query = buildString("SELECT event_object_table FROM information_schema.triggers WHERE trigger_name = 'tsvectorupdate' AND event_object_table = '", tableName.toLowerCase(), "';");
-                    boolean triggerExists = executeSQLQuery(query);
-                    if (!triggerExists) {
-                        query = buildString("CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON ", tableName, " FOR EACH ROW EXECUTE PROCEDURE search_trigger();");
-                        statement.executeUpdate(query);
-                    }
-                }
-                /*
-                //creating index on vertexType
-                query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_vertextype_index", " ON ", tableName, " (vertexType);");
-                statement.executeUpdate(query);
-                //creating index on observableType
-                JSONObject vertTable = vertTables.getJSONObject(tableName);
-                if (vertTable.has("observableType")) {
-                    query = buildString("CREATE INDEX IF NOT EXISTS ", tableName + "_observabletype_index", " ON ", tableName, " (observableType);");
-                    statement.executeUpdate(query);
-                }
-                */
-            } catch (SQLException e) {
-                logger.warn(e.getLocalizedMessage());
-                logger.warn(getStackTrace(e));
-                throw new StuccoDBException("failed to add indexes");
-            }
-        }
-    };
+    public void buildIndex(String filePath) throws StuccoDBException {};
 
     /**
      * Given a property map add a new vertex to the DB
@@ -286,15 +159,19 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         try {
             String tableName = properties.get("vertexType").toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.ADD_VERTEX);
-            JSONObject table = vertTables.getJSONObject(tableName);
-            for (Object key : table.keySet()) {
-                String column = key.toString();
+            System.out.println(preparedStatement.toString());
+            JSONObject table = vertTables.getJSONObject(tableName).getJSONObject("columns");
+            JSONArray order = vertTables.getJSONObject(tableName).getJSONArray("order");
+            for (int i = 3; i < order.length(); i++) {
+                String column = order.getString(i);
+                System.out.println(column);
+                int index = i - 2;
                 switch (Columns.valueOf(column).type) {
                     case TEXT: 
                         if (properties.containsKey(column)) {
-                            preparedStatement.setString(Columns.valueOf(column).index, properties.get(column).toString());
+                            preparedStatement.setString(index, properties.get(column).toString());
                         } else {
-                            preparedStatement.setNull(Columns.valueOf(column).index, Types.VARCHAR);
+                            preparedStatement.setNull(index, Types.VARCHAR);
                         }
                         break;
                     case ARRAY:
@@ -302,27 +179,29 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                             Collection collection = (Collection) properties.get(column);
                             Object[] array = (Object[]) collection.toArray();
                             Array sqlArray = connection.createArrayOf("text", array);
-                            preparedStatement.setArray(Columns.valueOf(column).index, sqlArray);
+                            preparedStatement.setArray(index, sqlArray);
                         } else {
-                            preparedStatement.setNull(Columns.valueOf(column).index, Types.ARRAY);
+                            preparedStatement.setNull(index, Types.ARRAY);
                         }
                         break;
                     case LONG:
                         if (properties.containsKey(column)) {
-                            preparedStatement.setLong(Columns.valueOf(column).index, ((Number)properties.get(column)).longValue());
+                            preparedStatement.setLong(index, ((Number)properties.get(column)).longValue());
                         } else {
-                            preparedStatement.setNull(Columns.valueOf(column).index, Types.BIGINT);
+                            preparedStatement.setNull(index, Types.BIGINT);
                         }
                         break;
                     case TIMESTAMP:
                         if (properties.containsKey(column)) {
-                            preparedStatement.setTimestamp(Columns.valueOf(column).index, (Timestamp)properties.get(column));
+                            preparedStatement.setTimestamp(index, (Timestamp)properties.get(column));
                         } else {
-                            preparedStatement.setNull(Columns.valueOf(column).index, Types.TIMESTAMP);
+                            preparedStatement.setNull(index, Types.TIMESTAMP);
                         }
                         break;
                 }
             }
+
+            System.out.println(preparedStatement.toString());
 
             preparedStatement.executeUpdate();
             ResultSet rs = preparedStatement.getGeneratedKeys();
@@ -330,6 +209,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 id = rs.getString("_id");
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
             throw new StuccoDBException("failed to add new vertex with name - " + properties.get("name") + ", and vertexType - " + properties.get("vertexType"));
@@ -352,8 +232,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             String tableName = key.toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERT_BY_ID);
             try {
-                uuid.setValue(id);
-                preparedStatement.setObject(1, uuid);
+                preparedStatement.setObject(1, id);
                 ResultSet rs = preparedStatement.executeQuery();
                 if (rs.next()) {
                     vertex = vertResultSetToMap(tableName, rs);
@@ -387,8 +266,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             String outVertTable = getVertexType(outVertID);
             String inVertTable = getVertexType(inVertID);
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(outVertID));
-            preparedStatement.setObject(3, UUID.fromString(inVertID));
+            preparedStatement.setObject(2, outVertID);
+            preparedStatement.setObject(3, inVertID);
             preparedStatement.setString(4, outVertTable);
             preparedStatement.setString(5, inVertTable);
             preparedStatement.executeUpdate();
@@ -404,7 +283,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERTEX_TYPE_BY_ID);
-            preparedStatement.setObject(1, UUID.fromString(vertID));
+            preparedStatement.setObject(1, vertID);
             ResultSet rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 vertexType = rs.getString(1);
@@ -427,7 +306,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_EDGES);
         try {
-            preparedStatement.setObject(1, UUID.fromString(outVertID));
+            preparedStatement.setObject(1, outVertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 Map<String, Object> map = edgesResultSetToMap(rs);
@@ -453,7 +332,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_EDGES_PAGE);
         try {
-            preparedStatement.setObject(1, UUID.fromString(outVertID));
+            preparedStatement.setObject(1, outVertID);
             preparedStatement.setInt(2, offset);
             preparedStatement.setInt(3, limit);
             ResultSet rs = preparedStatement.executeQuery();
@@ -482,7 +361,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_EDGES);
 
         try {
-            preparedStatement.setObject(1, UUID.fromString(inVertID));
+            preparedStatement.setObject(1, inVertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 Map<String, Object> map = edgesResultSetToMap(rs);
@@ -510,7 +389,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_EDGES_PAGE);
 
         try {
-            preparedStatement.setObject(1, UUID.fromString(inVertID));
+            preparedStatement.setObject(1, inVertID);
             preparedStatement.setInt(2, offset);
             preparedStatement.setInt(3, limit);
             ResultSet rs = preparedStatement.executeQuery();
@@ -564,7 +443,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_VERT_IDS_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(outVertID));
+            preparedStatement.setObject(2, outVertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 vertIDs.add(rs.getString("vertID"));
@@ -597,10 +476,10 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_VERT_IDS_AND_TABLE_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(outVertID));
+            preparedStatement.setObject(2, outVertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
-                UUID vertID = (UUID) rs.getObject(1);
+                String vertID = rs.getString(1);
                 String tableName = rs.getString(2);
                 String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE _id = '", vertID, "' AND ", constraintsList, ";");
                 vertIDs.addAll(getVertIDs(query));   
@@ -629,7 +508,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_VERT_IDS_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(inVertID));
+            preparedStatement.setObject(2, inVertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 vertIDs.add(rs.getString("vertID"));
@@ -662,10 +541,10 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_VERT_IDS_AND_TABLE_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(inVertID));
+            preparedStatement.setObject(2, inVertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
-                UUID vertID = (UUID) rs.getObject(1);
+                String vertID = rs.getString(1);
                 String tableName = rs.getString(2);
                 String query = buildString("SELECT _id AS vertID FROM ", tableName, " WHERE _id = '", vertID, "' AND ", constraintsList, ";");
                 vertIDs.addAll(getVertIDs(query));   
@@ -694,9 +573,9 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_VERT_IDS_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(vertID));
+            preparedStatement.setObject(2, vertID);
             preparedStatement.setString(3, relation);
-            preparedStatement.setObject(4, UUID.fromString(vertID));
+            preparedStatement.setObject(4, vertID);
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 vertIDs.add(rs.getString("vertID"));
@@ -861,7 +740,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     }
 
     private boolean containsAllColumns(String tableName, List<String> columnNames) {
-        Set tableColumns = vertTables.getJSONObject(tableName).keySet();
+        Set tableColumns = vertTables.getJSONObject(tableName).getJSONObject("columns").keySet();
         boolean contains = tableColumns.containsAll(columnNames); 
 
         return contains;
@@ -882,8 +761,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.REMOVE_EDGE_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(outVertID));
-            preparedStatement.setObject(3, UUID.fromString(inVertID));
+            preparedStatement.setObject(2, outVertID);
+            preparedStatement.setObject(3, inVertID);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
@@ -905,7 +784,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             String tableName = table.toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.REMOVE_VERT_BY_ID);
             try {
-                preparedStatement.setObject(1, UUID.fromString(vertID));
+                preparedStatement.setObject(1, vertID);
                 int count = preparedStatement.executeUpdate();
                 if (count != 0) {
                     removeEdgeByVertID(vertID);
@@ -926,9 +805,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private void removeEdgeByVertID(String vertID) {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.REMOVE_EDGE_BY_VERT_ID);
         try {
-            uuid.setValue(vertID);
-            preparedStatement.setObject(1, uuid);
-            preparedStatement.setObject(2, uuid);
+            preparedStatement.setObject(1, vertID);
+            preparedStatement.setObject(2, vertID);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
@@ -1220,8 +1098,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_EDGE_COUNT_BY_RELATION);
         try {
             preparedStatement.setString(1, relation);
-            preparedStatement.setObject(2, UUID.fromString(outVertID));
-            preparedStatement.setObject(3, UUID.fromString(inVertID));
+            preparedStatement.setObject(2, outVertID);
+            preparedStatement.setObject(3, inVertID);
             ResultSet rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 count = rs.getInt(1);
@@ -1321,7 +1199,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
 
         return new PostgresqlDBConstraint(property, condition, value);
     };
-
+ 
     /**
      * take ResultSet from sql query and converts it into HashMap<String, Object>
      * @param rs - ResultSet containing all sql selected values
@@ -1330,14 +1208,17 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     private Map<String, Object> vertResultSetToMap(String tableName, ResultSet rs) throws SQLException {
         Map<String, Object> map = new HashMap<String, Object>();
-        JSONObject table = vertTables.getJSONObject(tableName);
-        for (Object column : table.keySet()) {
-            String columnName = column.toString();
+        JSONArray order = vertTables.getJSONObject(tableName).getJSONArray("order");
+        for (int i = 3; i < order.length(); i++) {
+        // for (Object column : table.keySet()) {
+            String columnName = order.getString(i);
             if (Columns.valueOf(columnName).type == TYPE.ARRAY) {
                 Array array = rs.getArray(columnName);
                 if (array != null) {
-                    Object value = new HashSet<Object>(Arrays.asList((Object[]) array.getArray()));
-                    map.put(columnName, value);
+                    Set value = new HashSet<Object>(Arrays.asList((Object[]) array.getArray()));
+                    if (!value.isEmpty()) {
+                        map.put(columnName, value);
+                    }
                 }
             } else {
                 Object value = rs.getObject(columnName);
@@ -1417,11 +1298,11 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 case ARRAY:
                     value = jsonArrayToSet((JSONArray)value);
                     break;
-                case LONG:
-                    value = ((Number)value).longValue();
-                    break;
+            //    case LONG:
+            //        value = ((Number)value).longValue(); 
+            //        break;
             }
-            vert.put(column, value);
+            vert.put(column, (Object) value);
         }
 
         return vert;
@@ -1438,5 +1319,43 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             s.add(a.get(i));
         }
         return s;
+    }
+
+    /**
+     * bulk loading of graph (vertices and edges):
+     * 1. create table 'temp'
+     * 2. use 'copy' to copy graph into 'temp' table
+     * 3. calling 'merge_graph()' funciton that will perform alignment of new vertices and edges with existing
+     * 4. deleting 'temp' table
+     * 
+     * @param graph - json object of vertices and edges
+     */
+    @Override
+    public void bulkLoadGraph(JSONObject graph) {     
+        String generatedTableName = RandomStringUtils.randomAlphabetic(10);
+
+        CopyManager copyManager = null;
+        CopyIn copyIn = null;
+        try {
+            copyManager = new CopyManager((BaseConnection)connection);
+            statement.executeUpdate(buildString("CREATE TABLE IF NOT EXISTS ", generatedTableName, " (graph json);"));
+            copyIn = copyManager.copyIn(buildString("COPY ", generatedTableName, " FROM STDIN WITH csv quote e'\\x01' delimiter e'\\x02';"));
+            byte[] bytes = graph.toString().getBytes("UTF-8");
+            copyIn.writeToCopy(bytes, 0, bytes.length);
+            copyIn.endCopy();
+            statement.execute(buildString("SELECT merge_graph('", generatedTableName, "');"));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (copyIn.isActive()) {
+                    copyIn.cancelCopy();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } 
     }
 }
