@@ -1,5 +1,7 @@
 BEGIN;   
 
+	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 	-- function to create tsv column for tables which use GIST index
 	CREATE OR REPLACE FUNCTION add_tsv(tableName text) RETURNS void AS $$ 
 		DECLARE tableExists boolean; 
@@ -32,7 +34,7 @@ BEGIN;
 			END IF; 
 		END;  
 	$$ language plpgsql; 
-
+ 
 	-- creates (if it it null) uuid for vertices during insertion
 	CREATE OR REPLACE FUNCTION get_id(_id text) returns text as $$  
 		BEGIN  
