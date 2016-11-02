@@ -1,443 +1,884 @@
 {
   "edges": {
-    "Edge": {
-      "outVertID": {
-        "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
-        "type": "uuid"
-      }, 
-      "inVertID": {
-        "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
-        "type": "uuid"
-      }, 
-      "outVertTable": {
-        "constraint": "vertex_type", 
-        "type": "enum"
+    "Edges": {
+      "columns": {
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "outVertID": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }, 
+        "inVertID": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }, 
+        "outVertTable": {
+          "constraint": "text NOT NULL", 
+          "type": "text"
+        },
+        "inVertTable": {
+          "constraint": "text NOT NULL", 
+          "type": "text"
+        },
+        "relation": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }
       },
-      "inVertTable": {
-        "constraint": "vertex_type", 
-        "type": "enum"
-      },
-      "relation": {
-        "constraint": "uuid NOT NULL REFERENCES AddressRange OR IP ",
-        "type": "text"
+      "order": [
+        "timestamp",
+        "outVertID",
+        "inVertID",
+        "outVertTable",
+        "inVertTable",
+        "relation"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "outVertID",
+          "inVertID",
+          "relation"
+        ]
       }
     }
   },
   "vertices": {
     "AddressRange": {
-      "endIP": { 
-        "constraint": "text NOT NULL",
-        "type": "text"
-      }, 
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "endIP": { 
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }, 
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "startIP": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }, 
+        "startIPInt": {
+          "constraint": "bigint NOT NULL",
+          "type": "bigint"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }, 
+        "location": {
+          "constraint": "text",
+          "type": "text"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "observableType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "endIPInt": {
+          "constraint": "bigint NOT NULL",
+          "type": "bigint"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "startIP": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      }, 
-      "startIPInt": {
-        "constraint": "bigint NOT NULL",
-        "type": "bigint"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      }, 
-      "location": {
-        "constraint": "text",
-        "type": "text"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "observableType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "endIPInt": {
-        "constraint": "bigint NOT NULL",
-        "type": "bigint"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "observableType", 
+        "name", 
+        "startIP", 
+        "startIPInt", 
+        "endIP", 
+        "endIPInt", 
+        "description", 
+        "source",
+        "sourceDocument", 
+        "location"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "IP": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "ipInt": {
+          "constraint": "bigint NOT NULL",
+          "type": "bigint"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "observableType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "ipInt": {
-        "constraint": "bigint NOT NULL",
-        "type": "bigint"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "observableType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "observableType", 
+        "name",
+        "ipInt",
+        "description", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Vulnerability": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType",
+        "name",
+        "description", 
+        "shortDescription",
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Exploit_Target": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "shortDescription",
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Indicator": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY DEFAULT NULL",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY DEFAULT NULL",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY DEFAULT NULL",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType",
+        "name", 
+        "description", 
+        "shortDescription",
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Observable": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "alias": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "observableType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "observableType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "observableType", 
+        "name", 
+        "alias", 
+        "description",  
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "GIN": [
+          "alias"
+        ],
+        "UNIQUE": [
+          "name",
+          "observableType"
+        ]
       }
     },
     "TTP": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "shortDescription", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Campaign": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "alias": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "alias", 
+        "description", 
+        "shortDescription", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "GIN": [
+          "alias"
+        ]
       }
     },
     "Course_Of_Action": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "shortDescription", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Weakness": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Malware": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "alias": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "details": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "details": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "alias", 
+        "description", 
+        "shortDescription", 
+        "details", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "GIN": [
+          "alias"
+        ]
       }
     },
     "Exploit": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "shortDescription", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Incident": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "shortDescription", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "UNIQUE": [
+          "name"
+        ]
       }
     },
     "Threat_Actor": {
-      "vertexType": {
-        "constraint": "text NOT NULL",
-        "type": "text"
+      "columns": {
+        "_id": {
+          "constraint": "text PRIMARY KEY DEFAULT uuid_generate_v4() UNIQUE",
+          "type": "text"
+        },
+        "timestamp": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "modifiedDate": {
+          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
+          "type": "timestamp with time zone"
+        },
+        "vertexType": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "sourceDocument": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "name": {
+          "constraint": "text NOT NULL",
+          "type": "text"
+        },
+        "description": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "shortDescription": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        },
+        "source": {
+          "constraint": "text ARRAY",
+          "type": "array"
+        }
       },
-      "sourceDocument": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "name": {
-        "constraint": "text NOT NULL",
-        "type": "text"
-      },
-      "description": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "alias": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "shortDescription": {
-        "constraint": "text ARRAY",
-        "type": "array"
-      },
-      "source": {
-        "constraint": "text ARRAY",
-        "type": "array"
+      "order": [
+        "_id",
+        "timestamp",
+        "modifiedDate",
+        "vertexType", 
+        "name", 
+        "description", 
+        "shortDescription", 
+        "source", 
+        "sourceDocument"
+      ],
+      "indexes": {
+        "GIST": [
+          "name"
+        ],
+        "UNIQUE": [
+          "name"
+        ]
       }
     }
   }
