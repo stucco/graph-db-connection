@@ -909,4 +909,6 @@ public class InMemoryDBConnection extends DBConnectionBase{
             e.printStackTrace();
         }
     }
+
+    public void bulkLoadGraph(JSONObject graph) {}
 }

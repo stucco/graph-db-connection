@@ -20,6 +20,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
@@ -795,4 +798,6 @@ public class OrientDBConnection extends DBConnectionBase {
 
         return edgePropertyList;
     }
+
+    public void bulkLoadGraph(JSONObject graph) {}
 }
