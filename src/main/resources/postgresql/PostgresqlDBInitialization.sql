@@ -1,17 +1,18 @@
+-- TODO: add return as count of inserted vertices/edges 
 BEGIN;   
 
 	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 	-- function to create tsv column for tables which use GIST index
-	CREATE OR REPLACE FUNCTION add_tsv(tableName text) RETURNS void AS $$ 
-		DECLARE tableExists boolean; 
+	CREATE OR REPLACE FUNCTION add_tsv(_tableName text) RETURNS void AS $$ 
+		DECLARE _tableExists boolean; 
 		BEGIN 
-			SELECT EXISTS INTO tableExists (SELECT * FROM information_schema.columns WHERE table_name=tableName AND column_name='tsv'); 
-			IF tableExists = 'f' 
+			SELECT EXISTS INTO _tableExists (SELECT * FROM information_schema.columns WHERE table_name = _tableName AND column_name='tsv'); 
+			IF _tableExists = 'f' 
 			THEN 
-				EXECUTE format('ALTER TABLE %s ADD COLUMN tsv tsvector;', tableName); 
-				EXECUTE format('UPDATE %s SET tsv = to_tsvector(''english'', coalesce(array_to_string(alias, '' ''), '' ''));', tableName); 
-				EXECUTE format('CREATE INDEX ON %s USING gist(tsv);', tableName); 
+				EXECUTE format('ALTER TABLE %s ADD COLUMN tsv tsvector;', _tableName); 
+				EXECUTE format('UPDATE %s SET tsv = to_tsvector(''english'', coalesce(array_to_string(alias, '' ''), '' ''));', _tableName); 
+				EXECUTE format('CREATE INDEX ON %s USING gist(tsv);', _tableName); 
 			END IF; 
 		END; 
 	$$ language plpgsql;
@@ -25,12 +26,12 @@ BEGIN;
 	$search_trigger$ LANGUAGE plpgsql; 
 
 	-- function to add search_trigger to tables containing name and alias columns to execute on all inserts, updates, and delites
-	CREATE OR REPLACE FUNCTION add_trigger(tableName text) RETURNS void as $$  
-		DECLARE count int;  
+	CREATE OR REPLACE FUNCTION add_trigger(_tableName text) RETURNS void as $$  
+		DECLARE _count int;  
 		BEGIN  
-			SELECT count(event_object_table) into count FROM information_schema.triggers WHERE trigger_name = 'tsvectorupdate' AND event_object_table = tableName;  
-			IF count = 0  
-				THEN CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON tableName FOR EACH ROW EXECUTE PROCEDURE search_trigger();  
+			SELECT count(event_object_table) into _count FROM information_schema.triggers WHERE trigger_name = 'tsvectorupdate' AND event_object_table = _tableName;  
+			IF _count = 0  
+				THEN CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON _tableName FOR EACH ROW EXECUTE PROCEDURE search_trigger();  
 			END IF; 
 		END;  
 	$$ language plpgsql; 
@@ -47,67 +48,108 @@ BEGIN;
 	$$ language plpgsql; 
 
 	-- function to set UNIQUE constraint on table column if it does not exists
-	CREATE OR REPLACE FUNCTION add_unique_constraint(tableName text, indexName text, columns text) RETURNS void AS $$  
-		DECLARE constraintExists boolean;  
+	CREATE OR REPLACE FUNCTION add_unique_constraint(_tableName text, _indexName text, _columns text) RETURNS void AS $$  
+		DECLARE _constraintExists boolean;  
 		BEGIN  
-			indexName = lower(indexName);
-			SELECT EXISTS (SELECT * FROM pg_constraint WHERE conname = indexName) INTO constraintExists; 
-			IF constraintExists = 'f'  
+			_indexName = lower(_indexName);
+			SELECT EXISTS (SELECT * FROM pg_constraint WHERE conname = _indexName) INTO _constraintExists; 
+			IF _constraintExists = 'f'  
 				THEN  
-					EXECUTE 'ALTER TABLE ' || $1 || ' ADD CONSTRAINT ' || $2 || ' UNIQUE (' || $3 || ')';  
+					EXECUTE 'ALTER TABLE ' || _tableName || ' ADD CONSTRAINT ' || _indexName || ' UNIQUE (' || _columns || ')';  
 			END IF;  
 		END;  
 	$$ language plpgsql; 
 
-	CREATE OR REPLACE FUNCTION merge_graph(tempTable text) RETURNS void AS $$  
+	CREATE OR REPLACE FUNCTION merge_graph(_tempTable text) RETURNS void AS $$  
 		BEGIN  
-			EXECUTE 'CREATE TABLE ' || tempTable || '_duplicates (vertex_id text, duplicate_id text);';
+			EXECUTE 'CREATE TABLE if not exists ' || _tempTable || '_duplicates (vertex_id text, duplicate_id text);';
 
-			PERFORM merge_vertices(tempTable);
-			PERFORM merge_edges(tempTable);
-			
-			PERFORM update_xml(tempTable);
+			PERFORM merge_vertices(_tempTable);
+			PERFORM merge_edges(_tempTable);
 
-			EXECUTE 'DROP TABLE ' || tempTable || '_duplicates;';
+			EXECUTE 'DROP TABLE ' || _tempTable || '_duplicates;';
 		END;  
 	$$ language plpgsql; 
 
-	CREATE OR REPLACE FUNCTION merge_edges(tempTable text) RETURNS void AS $$  
-		BEGIN  
-			EXECUTE 
-			'SELECT insert_edge(json_array_elements((graph->>''edges'')::json))
-			FROM ' || tempTable ||';';
+	CREATE OR REPLACE FUNCTION merge_edges(_tempTable text) RETURNS void AS $$  
+		DECLARE
+			_details text;
+			_message text;
+			_hint text;
+		BEGIN 
+			EXECUTE
+			'WITH new_edges AS (
+				SELECT 
+					e->>''outVertID'' AS outVertID,  
+					e->>''inVertID'' AS inVertID,  
+					e->>''outVertTable'' AS outVertTable,  
+					e->>''inVertTable'' AS inVertTable,  
+					e->>''relation'' AS relation  
+				FROM (
+					SELECT json_array_elements((graph->>''edges'')::json)  
+					AS e  
+					FROM ' || _tempTable || '
+				)  
+				AS j
+			) 
+			SELECT 
+				insert_edge( 
+					outVertID,  
+					(select duplicate_id from ' || _tempTable || '_duplicates where vertex_id = outVertID limit 1),  
+					inVertID,  
+					(select duplicate_id from ' || _tempTable || '_duplicates where vertex_id = inVertID limit 1),  
+					outVertTable,  
+					inVertTable,  
+					relation 
+				)
+			FROM new_edges 
+			GROUP BY outVertID, inVertID, outVertTable, inVertTable, relation';
+
+		EXCEPTION WHEN OTHERS THEN 
+			GET STACKED DIAGNOSTICS _details = PG_EXCEPTION_DETAIL, _message = MESSAGE_TEXT, _hint = PG_EXCEPTION_HINT;
+            RAISE NOTICE 'PG_EXCEPTION_DETAIL: %', _details;
+            RAISE NOTICE 'MESSAGE_TEXT: %', _message;
+            RAISE NOTICE 'PG_EXCEPTION_HINT: %', _hint;
 		END;  
 	$$ language plpgsql;  
 
 	-- function to parse edge and insert it into table
 	-- function to parse vertices is more complicated and depends on config file, so InitializePostgresqlDB is building this function for vertices
-	CREATE OR REPLACE FUNCTION insert_edge(edge json) RETURNS void AS $$   
+	-- CREATE OR REPLACE FUNCTION insert_edge(_outVertID text, _inVertID text, _outVertTable text, _inVertTable text, _relation text, _vertex_id text, _duplicate_id text) RETURNS void AS $$   
+	CREATE OR REPLACE FUNCTION insert_edge(_outVertID text, _outVertDuplicateID text, _inVertID text, _inVertDuplicateID text, _outVertTable text, _inVertTable text, _relation text) RETURNS void AS $$   
 		DECLARE
-			detail text;
+			_details text;
+			_message text;
+			_hint text;
 		BEGIN    
+			IF _inVertDuplicateID IS NOT NULL THEN
+				PERFORM update_xml(_outVertID, _outVertTable, _inVertID, _inVertDuplicateID);
+				_inVertID := _inVertDuplicateID;
+			END IF;
+
+			IF _outVertDuplicateID IS NOT NULL then 
+				_outVertID := _outVertDuplicateID;
+			END IF;
+
 			INSERT INTO Edges (outVertID, inVertID, outVertTable, inVertTable, relation)  
 			VALUES (  
-				(edge->>'outVertID'),  
-				(edge->>'inVertID'),  
-				(edge->>'outVertTable'),  
-				(edge->>'inVertTable'),  
-				edge->>'relation')  
-			ON CONFLICT (relation, outVertID, inVertID) 
+				_outVertID,  
+				_inVertID,  
+				_outVertTable,  
+				_inVertTable,  
+				_relation)  
+			ON CONFLICT ("relation", "outvertid", "invertid") 
 			DO NOTHING;  
 		EXCEPTION WHEN OTHERS THEN 
-			GET STACKED DIAGNOSTICS detail = PG_EXCEPTION_DETAIL;
-			RAISE NOTICE 'PG_EXCEPTION_DETAIL: %', detail;
-			RAISE NOTICE 'outVertID: %', outVertID;
-			RAISE NOTICE 'inVertID: %', inVertID;
-			RAISE NOTICE 'outVertTable: %', outVertTable;
-			RAISE NOTICE 'inVertTable: %', inVertTable;
-			RAISE NOTICE 'relation: %', relation;
-			RETURN;
+			GET STACKED DIAGNOSTICS _details = PG_EXCEPTION_DETAIL, _message = MESSAGE_TEXT, _hint = PG_EXCEPTION_HINT;
+            RAISE NOTICE 'PG_EXCEPTION_DETAIL: %', _details;
+            RAISE NOTICE 'MESSAGE_TEXT: %', _message;
+            RAISE NOTICE 'PG_EXCEPTION_HINT: %', _hint;
+			RAISE NOTICE 'outVertID: %, inVertID: %, outVertTable: %, inVertTable: %, relation: %', _outVertID, _inVertID, _outVertTable, _inVertTable, _relation;
 		END; 
 	$$ language plpgsql; 
 
-	CREATE OR REPLACE FUNCTION merge_vertices(tempTable text) RETURNS void AS $$
+	CREATE OR REPLACE FUNCTION merge_vertices(_tempTable text) RETURNS void AS $$
 		BEGIN    
 			EXECUTE 
 			'WITH duplicates AS (
@@ -116,11 +158,11 @@ BEGIN;
 					SELECT (json_each(graph.vertices)).key, (json_each(graph.vertices)).value 
 					FROM (
 						SELECT (graph->>''vertices'')::json AS vertices 
-						FROM ' || tempTable || ') 
+						FROM ' || _tempTable || ') 
 					AS graph) 
 				AS vertex) 
-			INSERT INTO ' || tempTable || '_duplicates 
-			SELECT key, duplicate_id 
+			INSERT INTO ' || _tempTable || '_duplicates
+			SELECT key, duplicate_id
 			FROM duplicates 
 			WHERE duplicate_id <> key';
 		END; 
@@ -477,38 +519,34 @@ BEGIN;
 	$$ language plpgsql;
 	*/	
 
-	CREATE OR REPLACE FUNCTION json_to_array(jsonArray json) RETURNS text[] AS $$
-		DECLARE arraySql text[];   
-				i text;
+	CREATE OR REPLACE FUNCTION json_to_array(_jsonArray json) RETURNS text[] AS $$
+		DECLARE _arraySql text[];   
+				_i text;
 		BEGIN    
-			FOR i IN SELECT * FROM json_array_elements_text(jsonArray)
+			FOR _i IN SELECT * FROM json_array_elements_text(_jsonArray)
 
 			LOOP
-				arraySql = (arraySql || i);
+				_arraySql = (_arraySql || _i);
 			END LOOP;
-			RETURN arraySql;
+
+			RETURN _arraySql;
 		END; 
 	$$ language plpgsql;
 
 	-- select insert_vertex(key, value) as duplicate_id from (select (json_each(graph.vertices)).key, (json_each(graph.vertices)).value from (SELECT (graph->>'vertices')::json AS vertices FROM v2579uiud2) AS graph) as vertex;
 
-	CREATE OR REPLACE FUNCTION duplicateID(vertex_id text, duplicate_id text) RETURNS text AS $$
+	CREATE OR REPLACE FUNCTION duplicateID(_vertex_id text, _duplicate_id text) RETURNS text AS $$
 		BEGIN    
-			INSERT INTO duplicates VALUES (vertex_id, duplicate_id);
-			RETURN duplicate_id;
+			INSERT INTO duplicates VALUES (_vertex_id, _duplicate_id);
+			
+			RETURN _duplicate_id;
 		END; 
 	$$ language plpgsql;
 
-	-- functions to update stix xml to point to correct entity; required to build report
-	CREATE OR REPLACE FUNCTION update_xml(tableName text) RETURNS void AS $$
+	-- functions to update stix xml to point to correct entity after duplicate detection; required to build report	
+	CREATE OR REPLACE FUNCTION update_xml(_vertex_id text, _tableName text, _from_id text, _to_id text) RETURNS void AS $$
 		BEGIN    
-			EXECUTE 'SELECT update_xml(outVertID, outVertTable, vertex_id, duplicate_id) FROM ' || tableName || '_duplicates, edges WHERE vertex_id = inVertID';
-		END; 
-	$$ language plpgsql;	
-
-	CREATE OR REPLACE FUNCTION update_xml(vertex_id text, tableName text, from_id text, to_id text) RETURNS void AS $$
-		BEGIN    
-			EXECUTE 'UPDATE ' || tableName || ' SET sourceDocument = replace(sourceDocument, ''' || from_id ||''', ''' || to_id || ''') WHERE _id = ''' || vertex_id || ''';';
+			EXECUTE 'UPDATE ' || _tableName || ' SET sourceDocument = replace(sourceDocument, ''' || _from_id ||''', ''' || _to_id || ''') WHERE _id = ''' || _vertex_id || ''';';
 		END; 
 	$$ language plpgsql;
 
