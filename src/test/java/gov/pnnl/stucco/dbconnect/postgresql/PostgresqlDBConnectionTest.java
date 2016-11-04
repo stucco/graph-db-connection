@@ -85,11 +85,12 @@ public class PostgresqlDBConnectionTest {
           "      \"outVertID\": \"Indicator-a32549e9-02ea-4891-8f4d-e3b0412ac402\","+
           "      \"inVertID\": \"TTP-e94f0d8c-8f73-41a6-a834-9bcada3d3c70\","+
           "      \"outVertTable\": \"Indicator\","+
-                "      \"inVertTable\": \"TTP\","+
+          "      \"inVertTable\": \"TTP\","+
           "      \"relation\": \"IndicatedTTP\""+
           "    }"+
           "  ]"+
           "}";
+
 
         String outVertID = "Indicator-a32549e9-02ea-4891-8f4d-e3b0412ac402";
         String inVertID = "TTP-e94f0d8c-8f73-41a6-a834-9bcada3d3c70";
@@ -443,7 +444,6 @@ public class PostgresqlDBConnectionTest {
           assertEquals(ipMap, ipMapDB);
 
           List<Map<String,Object>> inEdges = conn.getInEdges(addrRangeID);
-          System.out.println(inEdges);
           assertTrue(inEdges.contains(edge));
 
           List<Map<String,Object>> outEdges = conn.getOutEdges(ipID);
@@ -805,6 +805,529 @@ public class PostgresqlDBConnectionTest {
         } catch (RuntimeException e) {
             e.printStackTrace();
         }
+
+        for (String id : (Set<String>) graph.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+    }
+
+    @Test
+    public void testIncidentThreatActorTTPObservableDuplicate () {
+        System.out.println("RUNNING: gov.pnnl.stucco.dbconnect.postgresql.testIncidentThreatActor()");
+
+        String graphString1 =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\":{ " +
+            "               \"sourceDocument\":\"<ttp:TTP xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\\\" xsi:type=\\\"ttp:TTPType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><ttp:Title>TTP Title<\\/ttp:Title><ttp:Behavior><ttp:Exploits><ttp:Exploit><ttp:Title>Exploit Title 1<\\/ttp:Title><ttp:Description>Exploit Description 1<\\/ttp:Description><\\/ttp:Exploit><\\/ttp:Exploits><\\/ttp:Behavior><\\/ttp:TTP>\", " +
+            "               \"vertexType\":\"Exploit\", " +
+            "               \"name\":\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\", " +
+            "               \"description\":[\"Exploit Description 1\"] " +
+            "           }, " +
+            "           \"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\":{ " +
+            "               \"sourceDocument\":\"<ta:Threat_Actor xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\\\" xsi:type=\\\"ta:ThreatActorType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><ta:Title>ThreatActor Title<\\/ta:Title><ta:Description>ThreatActor Description 1<\\/ta:Description><ta:Description>ThreatActor Description 2<\\/ta:Description><ta:Identity><stixCommon:Name>ThreatActor Name<\\/stixCommon:Name><stixCommon:Related_Identities><stixCommon:Related_Identity><stixCommon:Identity><stixCommon:Name>ThreatActor Related Name<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Related_Identity><\\/stixCommon:Related_Identities><\\/ta:Identity><\\/ta:Threat_Actor>\", " +
+            "               \"vertexType\":\"Threat_Actor\", " +
+            "               \"name\":\"ThreatActor Name\", " +
+            "               \"description\":[\"ThreatActor Description 2\",\"ThreatActor Description 1\"] " +
+            "           }, " +
+            "           \"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\":{ " +
+            "               \"sourceDocument\":\"<cybox:Observable xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" xmlns:PortObj=\\\"http://cybox.mitre.org/objects#PortObject-2\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\\\"><cybox:Object><cybox:Properties xsi:type=\\\"PortObj:PortObjectType\\\"><PortObj:Port_Value>80<\\/PortObj:Port_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\",  " +
+            "               \"vertexType\":\"Observable\", " +
+            "               \"name\":\"80\", " +
+            "               \"observableType\":\"Port\" " +
+            "           }, " +
+            "           \"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\":{ " +
+            "               \"sourceDocument\":\"<incident:Incident xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:incident=\\\"http://stix.mitre.org/Incident-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\\\" xsi:type=\\\"incident:IncidentType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><incident:Title>Incident Title<\\/incident:Title><incident:External_ID>External ID<\\/incident:External_ID><incident:Description>Incident description 1<\\/incident:Description><incident:Description>Incident description 2<\\/incident:Description><incident:Related_Observables><incident:Related_Observable><stixCommon:Observable idref=\\\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\\\"><\\/stixCommon:Observable><\\/incident:Related_Observable><\\/incident:Related_Observables><incident:Leveraged_TTPs><incident:Leveraged_TTP><stixCommon:TTP idref=\\\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\\\" xsi:type=\\\"ttp:TTPType\\\"><\\/stixCommon:TTP><\\/incident:Leveraged_TTP><\\/incident:Leveraged_TTPs><incident:Attributed_Threat_Actors><incident:Threat_Actor><stixCommon:Threat_Actor idref=\\\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\\\" xsi:type=\\\"ta:ThreatActorType\\\"><\\/stixCommon:Threat_Actor><\\/incident:Threat_Actor><\\/incident:Attributed_Threat_Actors><incident:Information_Source><stixCommon:Identity><stixCommon:Name>Source Name 1<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Name 2<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Name 3<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/incident:Information_Source><\\/incident:Incident>\", " +
+            "               \"vertexType\":\"Incident\", " +
+            "               \"name\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "               \"description\":[\"Incident description 1\",\"Incident description 2\"], " +
+            "               \"source\":[\"Source Name 1\",\"Source Name 2\",\"Source Name 3\"] " +
+            "           } " +
+            "       }, " +
+            "       \"edges\":[ " +
+            "           { " +
+            "                \"outVertID\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "                \"inVertID\":\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\", " +
+            "                \"outVertTable\":\"Incident\", " +
+            "                \"inVertTable\":\"TTP\", " +
+            "                \"relation\":\"LeveragedTTP\" " +
+            "            }, " +
+            "           { " +
+            "                \"outVertID\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "                \"inVertID\":\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\", " +
+            "                \"outVertTable\":\"Incident\", " +
+            "                \"inVertTable\":\"Observable\", " +
+            "                \"relation\":\"RelatedObservable\" " +
+            "            }, " +
+            "           { " +
+            "                \"outVertID\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "                \"inVertID\":\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\", " +
+            "                \"outVertTable\":\"Incident\", " +
+            "                \"inVertTable\":\"Threat_Actor\", " +
+            "                \"relation\":\"RelatedThreatActor\" " +
+            "            } " +
+            "       ] " +
+            "   }";
+
+        String graphString2 =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:port-123456-962a-408e-9495-be65b11fff09\": {"+
+            "               \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" id=\\\"stucco:port-6e8e3e78-962a-408e-9495-be65b11fff09\\\"><cybox:Title>Port<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">Argus<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:port-56867\\\"><cybox:Description>80<\\/cybox:Description><cybox:Properties xmlns:PortObj=\\\"http://cybox.mitre.org/objects#PortObject-2\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xsi:type=\\\"PortObj:PortObjectType\\\"><PortObj:Port_Value>56867<\\/PortObj:Port_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\", " +
+            "               \"vertexType\": \"Observable\", " +
+            "               \"name\": \"80\", " +
+            "               \"description\": [\"80\"], " +
+            "               \"source\": [\"Argus\"], " +
+            "               \"observableType\": \"Port\" " +
+            "           }," +
+            "           \"stucco:address-046baefe-f1d0-45ee-91c3-a9a22a7e6ddd\": {"+
+            "               \"sourceDocument\": \"<cybox:Observable xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" id=\\\"stucco:address-046baefe-f1d0-45ee-91c3-a9a22a7e6ddd\\\"><cybox:Title>Address<\\/cybox:Title><cybox:Observable_Source><cyboxCommon:Information_Source_Type xmlns:cyboxCommon=\\\"http://cybox.mitre.org/common-2\\\">Argus<\\/cyboxCommon:Information_Source_Type><\\/cybox:Observable_Source><cybox:Object id=\\\"stucco:address-168430180_22\\\"><cybox:Description>10.10.10.100, port 80<\\/cybox:Description><cybox:Properties xmlns:SocketAddressObj=\\\"http://cybox.mitre.org/objects#SocketAddressObject-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xsi:type=\\\"SocketAddressObj:SocketAddressObjectType\\\"><SocketAddressObj:IP_Address object_reference=\\\"stucco:ip-a5dff0b3-0f2f-4308-a16d-949c5826cf1a\\\" /><SocketAddressObj:Port object_reference=\\\"stucco:port-123456-962a-408e-9495-be65b11fff09\\\" /><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\", " +
+            "               \"vertexType\": \"Observable\", " +
+            "               \"name\": \"10.10.10.100:80\", " +
+            "               \"description\": [\"10.10.10.100, port 80\"], " +
+            "               \"source\": [\"Argus\"], " +
+            "               \"observableType\": \"Socket Address\" " +
+            "           }}," +
+            "       \"edges\": ["+
+            "           {"+
+            "               \"outVertID\": \"stucco:address-046baefe-f1d0-45ee-91c3-a9a22a7e6ddd\","+
+            "               \"inVertID\": \"stucco:port-123456-962a-408e-9495-be65b11fff09\","+
+            "               \"outVertTable\": \"Observable\","+
+            "               \"inVertTable\": \"Observable\","+
+            "               \"relation\": \"Sub-Observable\""+
+            "           }"+
+            "       ]"+
+            "   }";
+
+        JSONObject graph1 = new JSONObject(graphString1);
+        JSONObject vertices = graph1.getJSONObject("vertices");
+        JSONArray edges = graph1.getJSONArray("edges");
+
+        conn.bulkLoadGraph(graph1);
+
+        String ttpID = "stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b";
+        String taID = "stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678";
+        String observableID = "stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2";
+        String incidentID = "stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129";
+
+        Map<String, Object> ttp = conn.jsonVertToMap(vertices.getJSONObject(ttpID));
+        Map<String, Object> ttpDB = conn.getVertByID(ttpID);
+        assertEquals(ttp, ttpDB);
+
+        Map<String, Object> ta = conn.jsonVertToMap(vertices.getJSONObject(taID));
+        Map<String, Object> taDB = conn.getVertByID(taID);
+        assertEquals(ta, taDB);
+
+        Map<String, Object> observable = conn.jsonVertToMap(vertices.getJSONObject(observableID));
+        Map<String, Object> observableDB = conn.getVertByID(observableID);
+        assertEquals(ttp, ttpDB);
+
+        Map<String, Object> incident = conn.jsonVertToMap(vertices.getJSONObject(incidentID));
+        Map<String, Object> incidentpDB = conn.getVertByID(incidentID);
+        assertEquals(incident, incidentpDB);
+
+        Map<String, Object> edge0 = convertEdgeToMap(edges.getJSONObject(0));
+        Map<String, Object> edge1 = convertEdgeToMap(edges.getJSONObject(1));
+        Map<String, Object> edge2 = convertEdgeToMap(edges.getJSONObject(2));
+
+        List<Map<String, Object>> outEdges = conn.getOutEdges(incidentID);
+        assertTrue(outEdges.contains(edge0));
+        assertTrue(outEdges.contains(edge1));
+        assertTrue(outEdges.contains(edge2));
+
+        JSONObject graph2 = new JSONObject(graphString2);
+        vertices = graph2.getJSONObject("vertices");
+        edges = graph2.getJSONArray("edges");
+
+        conn.bulkLoadGraph(graph2);
+
+        Map<String, Object> updatedObservableDB = conn.getVertByID(observableID);
+        assertEquals(updatedObservableDB.get("name"), "80");
+        assertEquals(updatedObservableDB.get("vertexType"), "Observable");
+        assertEquals(updatedObservableDB.get("observableType"), "Port");
+        assertTrue(((Set<String>)updatedObservableDB.get("description")).contains("80"));
+        assertTrue(((Set<String>)updatedObservableDB.get("source")).contains("Argus"));
+
+
+        String duplicatePortID = "stucco:port-123456-962a-408e-9495-be65b11fff09";
+        Map<String, Object> portDB = conn.getVertByID(duplicatePortID);
+        assertNull(portDB);
+
+        String addressID = "stucco:address-046baefe-f1d0-45ee-91c3-a9a22a7e6ddd";
+        Map<String, Object> address = conn.jsonVertToMap(vertices.getJSONObject(addressID));
+        Map<String, Object> addressDB = conn.getVertByID(addressID);
+        String sourceDocument = (String)address.get("sourceDocument");
+        String updatedSourceDocument = (String)addressDB.get("sourceDocument");
+        assertNotEquals(sourceDocument, updatedSourceDocument);
+
+        sourceDocument = sourceDocument.replaceAll(duplicatePortID, observableID);
+        assertEquals(sourceDocument, updatedSourceDocument);
+
+        List<Map<String, Object>> inEdge = conn.getInEdges(duplicatePortID);
+        assertTrue(inEdge.isEmpty());
+
+
+        for (String id : (Set<String>) graph1.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+        for (String id : (Set<String>) graph2.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+    }
+
+    @Test
+    public void testIncidentThreatActorObservableTTP () {
+        System.out.println("RUNNING: gov.pnnl.stucco.dbconnect.postgresql.testIncidentThreatActorObservableTTP()");
+
+        String graphString1 =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:Incident-19ef98a1-c297-4756-a99d-123456789100\":{ " +
+            "               \"sourceDocument\":\"<incident:Incident xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:incident=\\\"http://stix.mitre.org/Incident-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:Incident-19ef98a1-c297-4756-a99d-123456789100\\\" xsi:type=\\\"incident:IncidentType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><incident:Title>Incident Title<\\/incident:Title><incident:External_ID>External ID<\\/incident:External_ID><incident:Description>Incident description 1<\\/incident:Description><incident:Description>Incident description 2<\\/incident:Description><incident:Related_Observables><incident:Related_Observable><stixCommon:Observable idref=\\\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\\\"><\\/stixCommon:Observable><\\/incident:Related_Observable><\\/incident:Related_Observables><incident:Leveraged_TTPs><incident:Leveraged_TTP><stixCommon:TTP idref=\\\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\\\" xsi:type=\\\"ttp:TTPType\\\"><\\/stixCommon:TTP><\\/incident:Leveraged_TTP><\\/incident:Leveraged_TTPs><incident:Attributed_Threat_Actors><incident:Threat_Actor><stixCommon:Threat_Actor idref=\\\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\\\" xsi:type=\\\"ta:ThreatActorType\\\"><\\/stixCommon:Threat_Actor><\\/incident:Threat_Actor><\\/incident:Attributed_Threat_Actors><incident:Information_Source><stixCommon:Identity><stixCommon:Name>Source Name 1<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Name 2<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Name 3<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/incident:Information_Source><\\/incident:Incident>\", " +
+            "               \"vertexType\":\"Incident\", " +
+            "               \"name\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "               \"source\":[\"Source Name 1\",\"Source Name 2\",\"Source Name 3\"] " +
+            "           } " +
+            "       }, " +
+            "       \"edges\":[] " +
+            "   }";
+
+        String graphString2 =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\":{ " +
+            "               \"sourceDocument\":\"<ttp:TTP xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\\\" xsi:type=\\\"ttp:TTPType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><ttp:Title>TTP Title<\\/ttp:Title><ttp:Behavior><ttp:Exploits><ttp:Exploit><ttp:Title>Exploit Title 1<\\/ttp:Title><ttp:Description>Exploit Description 1<\\/ttp:Description><\\/ttp:Exploit><\\/ttp:Exploits><\\/ttp:Behavior><\\/ttp:TTP>\", " +
+            "               \"vertexType\":\"Exploit\", " +
+            "               \"name\":\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\", " +
+            "               \"description\":[\"Exploit Description 1\"] " +
+            "           }, " +
+            "           \"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\":{ " +
+            "               \"sourceDocument\":\"<ta:Threat_Actor xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\\\" xsi:type=\\\"ta:ThreatActorType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><ta:Title>ThreatActor Title<\\/ta:Title><ta:Description>ThreatActor Description 1<\\/ta:Description><ta:Description>ThreatActor Description 2<\\/ta:Description><ta:Identity><stixCommon:Name>ThreatActor Name<\\/stixCommon:Name><stixCommon:Related_Identities><stixCommon:Related_Identity><stixCommon:Identity><stixCommon:Name>ThreatActor Related Name<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Related_Identity><\\/stixCommon:Related_Identities><\\/ta:Identity><\\/ta:Threat_Actor>\", " +
+            "               \"vertexType\":\"Threat_Actor\", " +
+            "               \"name\":\"ThreatActor Name\", " +
+            "               \"description\":[\"ThreatActor Description 2\",\"ThreatActor Description 1\"] " +
+            "           }, " +
+            "           \"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\":{ " +
+            "               \"sourceDocument\":\"<cybox:Observable xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" xmlns:PortObj=\\\"http://cybox.mitre.org/objects#PortObject-2\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\\\"><cybox:Object><cybox:Properties xsi:type=\\\"PortObj:PortObjectType\\\"><PortObj:Port_Value>80<\\/PortObj:Port_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\", " +
+            "               \"vertexType\":\"Observable\", " +
+            "               \"name\":\"80\", " +
+            "               \"observableType\":\"Port\" " +
+            "           }, " +
+            "           \"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\":{ " +
+            "               \"sourceDocument\":\"<incident:Incident xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:incident=\\\"http://stix.mitre.org/Incident-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\\\" xsi:type=\\\"incident:IncidentType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><incident:Title>Incident Title<\\/incident:Title><incident:External_ID>External ID<\\/incident:External_ID><incident:Description>Incident description 1<\\/incident:Description><incident:Description>Incident description 2<\\/incident:Description><incident:Related_Observables><incident:Related_Observable><stixCommon:Observable idref=\\\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\\\"><\\/stixCommon:Observable><\\/incident:Related_Observable><\\/incident:Related_Observables><incident:Leveraged_TTPs><incident:Leveraged_TTP><stixCommon:TTP idref=\\\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\\\" xsi:type=\\\"ttp:TTPType\\\"><\\/stixCommon:TTP><\\/incident:Leveraged_TTP><\\/incident:Leveraged_TTPs><incident:Attributed_Threat_Actors><incident:Threat_Actor><stixCommon:Threat_Actor idref=\\\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\\\" xsi:type=\\\"ta:ThreatActorType\\\"><\\/stixCommon:Threat_Actor><\\/incident:Threat_Actor><\\/incident:Attributed_Threat_Actors><incident:Information_Source><stixCommon:Identity><stixCommon:Name>Source Name 1<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Name 2<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Name 3<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/incident:Information_Source><\\/incident:Incident>\", " +
+            "               \"vertexType\":\"Incident\", " +
+            "               \"name\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "               \"description\":[\"Incident description 1\",\"Incident description 2\"], " +
+            "               \"source\":[\"Source Name 1\",\"Source Name 2\",\"Source Name 3\"] " +
+            "           } " +
+            "       }, " +
+            "       \"edges\":[ " +
+            "           { " +
+            "               \"outVertTable\":\"Incident\", " +
+            "               \"outVertID\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "               \"inVertTable\":\"Exploit\", " +
+            "               \"inVertID\":\"stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b\", " +
+            "               \"relation\":\"LeveragedTTP\" " +
+            "           }, " +
+            "           { " +
+            "               \"outVertTable\":\"Incident\", " +
+            "               \"outVertID\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "               \"inVertTable\":\"Observable\", " +
+            "               \"inVertID\":\"stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2\", " +
+            "               \"relation\":\"RelatedObservable\" " +
+            "           }, " +
+            "           { " +
+            "               \"outVertTable\":\"Incident\", " +
+            "               \"outVertID\":\"stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129\", " +
+            "               \"inVertTable\":\"Threat_Actor\", " +
+            "               \"inVertID\":\"stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678\", " +
+            "               \"relation\":\"RelatedThreatActor\" " +
+            "           } " +
+            "       ] " +
+            "   }";
+
+        JSONObject graph1 = new JSONObject(graphString1);
+        JSONObject vertices1 = graph1.getJSONObject("vertices");
+
+        JSONObject graph2 = new JSONObject(graphString2);
+        JSONObject vertices2 = graph2.getJSONObject("vertices");
+        JSONArray edges2 = graph2.getJSONArray("edges");
+
+        String incidentID = "stucco:Incident-19ef98a1-c297-4756-a99d-123456789100";
+        String incidentDuplID = "stucco:Incident-19ef98a1-c297-4756-a99d-43b885ef0129";
+        String exploitID = "stucco:TTP-40d40e02-7055-43d3-8e7e-f566e4f53a3b";
+        String observableID = "stucco:Observable-d4a1b891-2905-49b9-90af-1c614528cdb2";
+        String taID = "stucco:ThreatActors-3aaad08a-ea7a-44e1-b809-7d3d6b5f3678";
+
+        conn.bulkLoadGraph(graph1);
+
+        Map<String, Object> incident = conn.jsonVertToMap(vertices1.getJSONObject(incidentID));
+        Map<String, Object> incidentDB = conn.getVertByID(incidentID);
+        assertEquals(incident, incidentDB);
+
+        conn.bulkLoadGraph(graph2);
+
+        Map<String, Object> exploit = conn.jsonVertToMap(vertices2.getJSONObject(exploitID));
+        Map<String, Object> exploitDB = conn.getVertByID(exploitID);
+        assertEquals(exploit, exploitDB);
+
+        Map<String, Object> observable = conn.jsonVertToMap(vertices2.getJSONObject(observableID));
+        Map<String, Object> observableDB = conn.getVertByID(observableID);
+        assertEquals(observable, observableDB);
+
+        Map<String, Object> ta = conn.jsonVertToMap(vertices2.getJSONObject(taID));
+        Map<String, Object> taDB = conn.getVertByID(taID);
+        assertEquals(ta, taDB);
+
+        /* testing merge of description */
+        Set<String> description = new HashSet<String>();
+        description.add("Incident description 1");
+        description.add("Incident description 2");
+        incident.put("description", (Object)description);
+
+        incidentDB = conn.getVertByID(incidentID);
+        assertEquals(incident, incidentDB);
+
+        for (int i = 0; i < edges2.length(); i++) {
+            JSONObject edge = edges2.getJSONObject(i);
+            edge.put("outVertID", "stucco:Incident-19ef98a1-c297-4756-a99d-123456789100");
+        }
+
+        List<Map<String, Object>> outEdges = conn.getOutEdges(incidentDuplID);
+        assertTrue(outEdges.isEmpty());
+
+        outEdges = conn.getOutEdges(incidentID);
+
+        assertTrue(outEdges.contains(convertEdgeToMap(edges2.getJSONObject(0))));
+        assertTrue(outEdges.contains(convertEdgeToMap(edges2.getJSONObject(1))));
+        assertTrue(outEdges.contains(convertEdgeToMap(edges2.getJSONObject(2))));
+
+
+
+        for (String id : (Set<String>) graph1.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+        for (String id : (Set<String>) graph2.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+    }
+
+     @Test
+    public void testCampaingDuplicateByAlias () {
+        System.out.println("RUNNING: gov.pnnl.stucco.dbconnect.postgresql.testCampaingDuplicateByAlias()");
+
+        String graphString1 =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:campaign-a2dec921-6a3f-49e4-b415-original\":{ " +
+            "               \"sourceDocument\":\"<campaign:Campaign xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:campaign=\\\"http://stix.mitre.org/Campaign-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\\\" xsi:type=\\\"campaign:CampaignType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><campaign:Title>Campaign<\\/campaign:Title><campaign:Description>Campaign description<\\/campaign:Description><campaign:Names><campaign:Name>Campaigns Name<\\/campaign:Name><\\/campaign:Names><campaign:Attribution><campaign:Attributed_Threat_Actor><stixCommon:Threat_Actor idref=\\\"stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99\\\" xsi:type=\\\"ta:ThreatActorType\\\"/><\\/campaign:Attributed_Threat_Actor><\\/campaign:Attribution><campaign:Information_Source><stixCommon:Identity><stixCommon:Name>Source One<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Two<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/campaign:Information_Source><\\/campaign:Campaign>\", " +
+            "               \"vertexType\":\"Campaign\", " +
+            "               \"name\":\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\", " +
+            "               \"description\":[\"Campaign description\"], " +
+            "               \"alias\":[\"Campaign One\"], " +
+            "               \"source\":[\"Source One\",\"Source Two\"] " +
+            "           } " +
+            "       }, " +
+            "       \"edges\":[] " +
+            "   }";
+
+        String graphString2 =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:campaign-a2dec921-6a3f-49e4-b415-duplicate\":{ " +
+            "               \"sourceDocument\":\"<campaign:Campaign xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:campaign=\\\"http://stix.mitre.org/Campaign-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\\\" xsi:type=\\\"campaign:CampaignType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><campaign:Title>Campaign<\\/campaign:Title><campaign:Description>Campaign description<\\/campaign:Description><campaign:Names><campaign:Name>Campaigns Name<\\/campaign:Name><\\/campaign:Names><campaign:Attribution><campaign:Attributed_Threat_Actor><stixCommon:Threat_Actor idref=\\\"stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99\\\" xsi:type=\\\"ta:ThreatActorType\\\"/><\\/campaign:Attributed_Threat_Actor><\\/campaign:Attribution><campaign:Information_Source><stixCommon:Identity><stixCommon:Name>Source One<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Two<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/campaign:Information_Source><\\/campaign:Campaign>\", " +
+            "               \"vertexType\":\"Campaign\", " +
+            "               \"name\":\"stucco:campaign-a2dec921-6a3f-49e4-b415-duplicate\", " +
+            "               \"description\":[\"Campaign description\"], " +
+            "               \"alias\":[\"Campaign One\", \"Campaign Two\"], " +
+            "               \"source\":[\"Source One\",\"Source Two\"] " +
+            "           } " +
+            "       }, " +
+            "       \"edges\":[] " +
+            "   }";
+
+        String originalID = "stucco:campaign-a2dec921-6a3f-49e4-b415-original";
+        String duplicateID = "stucco:campaign-a2dec921-6a3f-49e4-b415-duplicate";
+
+        JSONObject graph1 = new JSONObject(graphString1);
+        JSONObject vertices1 = graph1.getJSONObject("vertices");
+
+        conn.bulkLoadGraph(graph1);
+
+        Map<String, Object> original = conn.jsonVertToMap(vertices1.getJSONObject(originalID));
+        Map<String, Object> originalDB = conn.getVertByID(originalID);
+        assertEquals(original, originalDB);
+
+        JSONObject graph2 = new JSONObject(graphString2);
+        JSONObject vertices2 = graph2.getJSONObject("vertices");
+
+        conn.bulkLoadGraph(graph2);
+
+        Map<String, Object> duplicateDB = conn.getVertByID(duplicateID);
+        assertNull(duplicateDB);
+
+        Set<String> alias = (Set<String>)original.get("alias");
+        alias.add("Campaign Two");
+        original.put("alias", alias);
+
+        originalDB = conn.getVertByID(originalID);
+        assertEquals(original, originalDB);
+
+        for (String id : (Set<String>) graph1.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+        for (String id : (Set<String>) graph2.getJSONObject("vertices").keySet()) {
+            conn.removeVertByID(id);
+        }
+    }
+
+    @Test
+    public void testLoadAllStixElements () {
+        System.out.println("RUNNING: gov.pnnl.stucco.dbconnect.postgresql.testLoadAllStixElements()");
+
+        String graphString =
+            "   { " +
+            "       \"vertices\":{ " +
+            "           \"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\":{ " +
+            "               \"sourceDocument\":\"<indicator:Indicator xmlns:indicator=\\\"http://stix.mitre.org/Indicator-2\\\" xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:coa=\\\"http://stix.mitre.org/CourseOfAction-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\\\" xsi:type=\\\"indicator:IndicatorType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><indicator:Title>Indicator<\\/indicator:Title><indicator:Description>Indicator description<\\/indicator:Description><indicator:Observable idref=\\\"stucco:observable-bb95c949-7720-4b16-a491-93e0453b2785\\\"><\\/indicator:Observable><indicator:Indicated_TTP><stixCommon:TTP idref=\\\"stucco:ttp-8da79cbe-750d-4426-b960-baf8e67ec714\\\" xsi:type=\\\"ttp:TTPType\\\"/><\\/indicator:Indicated_TTP><indicator:Suggested_COAs><indicator:Suggested_COA><stixCommon:Course_Of_Action idref=\\\"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\\\" xsi:type=\\\"coa:CourseOfActionType\\\"/><\\/indicator:Suggested_COA><\\/indicator:Suggested_COAs><indicator:Related_Campaigns><indicator:Related_Campaign><stixCommon:Campaign idref=\\\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\\\"><\\/stixCommon:Campaign><\\/indicator:Related_Campaign><\\/indicator:Related_Campaigns><indicator:Producer><stixCommon:Identity><stixCommon:Name>Source One<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Two<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/indicator:Producer><\\/indicator:Indicator>\", " +
+            "               \"vertexType\":\"Indicator\", " +
+            "               \"name\":\"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\", " +
+            "               \"description\":[\"Indicator description\"], " +
+            "               \"source\":[\"Source One\",\"Source Two\"] " +
+            "           }, " +
+            "           \"stucco:et-52962ed3-1c7f-4cac-bedb-d49bb429b625\":{ " +
+            "               \"sourceDocument\":\"<et:Exploit_Target xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:coa=\\\"http://stix.mitre.org/CourseOfAction-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:et=\\\"http://stix.mitre.org/ExploitTarget-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:et-52962ed3-1c7f-4cac-bedb-d49bb429b625\\\" xsi:type=\\\"et:ExploitTargetType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><et:Title>Exploit_Target<\\/et:Title><et:Description>Description<\\/et:Description><et:Weakness><et:Description>Description of this weakness<\\/et:Description><et:CWE_ID>CWE-93487297<\\/et:CWE_ID><\\/et:Weakness><et:Potential_COAs><et:Potential_COA><stixCommon:Course_Of_Action idref=\\\"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\\\" xsi:type=\\\"coa:CourseOfActionType\\\"><\\/stixCommon:Course_Of_Action><\\/et:Potential_COA><\\/et:Potential_COAs><et:Information_Source><stixCommon:Identity><stixCommon:Name>Source One<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Two<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/et:Information_Source><\\/et:Exploit_Target>\", " +
+            "               \"vertexType\":\"Weakness\", " +
+            "               \"name\":\"CWE-93487297\", " +
+            "               \"description\":[\"Description of this weakness\"], " +
+            "               \"source\":[\"Source One\",\"Source Two\"] " +
+            "           }, " +
+            "           \"stucco:ttp-8da79cbe-750d-4426-b960-baf8e67ec714\":{ " +
+            "               \"sourceDocument\":\"<ttp:TTP xmlns:ttp=\\\"http://stix.mitre.org/TTP-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:ttp-8da79cbe-750d-4426-b960-baf8e67ec714\\\" xsi:type=\\\"ttp:TTPType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><ttp:Title>TTP<\\/ttp:Title><\\/ttp:TTP>\", " +
+            "               \"vertexType\":\"TTP\", " +
+            "               \"name\":\"stucco:ttp-8da79cbe-750d-4426-b960-baf8e67ec714\" " +
+            "           }, " +
+            "           \"stucco:observable-bb95c949-7720-4b16-a491-93e0453b2785\":{ " +
+            "               \"sourceDocument\":\"<cybox:Observable xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:cybox=\\\"http://cybox.mitre.org/cybox-2\\\" xmlns:PortObj=\\\"http://cybox.mitre.org/objects#PortObject-2\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:observable-bb95c949-7720-4b16-a491-93e0453b2785\\\"><cybox:Object><cybox:Properties xsi:type=\\\"PortObj:PortObjectType\\\"><PortObj:Port_Value>80<\\/PortObj:Port_Value><\\/cybox:Properties><\\/cybox:Object><\\/cybox:Observable>\",  " +
+            "               \"vertexType\":\"Observable\", " +
+            "               \"name\":\"80\", " +
+            "               \"observableType\":\"Port\" " +
+            "           }, " +
+            "           \"stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99\":{ " +
+            "               \"sourceDocument\":\"<ta:Threat_Actor xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99\\\" xsi:type=\\\"ta:ThreatActorType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><ta:Title>Threat_Actor<\\/ta:Title><ta:Identity><stixCommon:Name>Actor's name<\\/stixCommon:Name><stixCommon:Related_Identities><stixCommon:Related_Identity><stixCommon:Identity><stixCommon:Name>Related Name<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Related_Identity><\\/stixCommon:Related_Identities><\\/ta:Identity><\\/ta:Threat_Actor>\", " +
+            "               \"vertexType\":\"Threat_Actor\", " +
+            "               \"name\":\"Actor's name\", " +
+            "           }, " +
+            "           \"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\":{ " +
+            "               \"sourceDocument\":\"<campaign:Campaign xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:campaign=\\\"http://stix.mitre.org/Campaign-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:ta=\\\"http://stix.mitre.org/ThreatActor-1\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\\\" xsi:type=\\\"campaign:CampaignType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><campaign:Title>Campaign<\\/campaign:Title><campaign:Description>Campaign description<\\/campaign:Description><campaign:Names><campaign:Name>Campaigns Name<\\/campaign:Name><\\/campaign:Names><campaign:Attribution><campaign:Attributed_Threat_Actor><stixCommon:Threat_Actor idref=\\\"stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99\\\" xsi:type=\\\"ta:ThreatActorType\\\"/><\\/campaign:Attributed_Threat_Actor><\\/campaign:Attribution><campaign:Information_Source><stixCommon:Identity><stixCommon:Name>Source One<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Two<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/campaign:Information_Source><\\/campaign:Campaign>\", " +
+            "               \"vertexType\":\"Campaign\", " +
+            "               \"name\":\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\", " +
+            "               \"description\":[\"Campaign description\"], " +
+            "               \"alias\":[\"Campaigns Name\"], " +
+            "               \"source\":[\"Source One\",\"Source Two\"] " +
+            "           }, " +
+            "           \"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\":{ " +
+            "               \"sourceDocument\":\"<coa:Course_Of_Action xmlns:stixCommon=\\\"http://stix.mitre.org/common-1\\\" xmlns:coa=\\\"http://stix.mitre.org/CourseOfAction-1\\\" xmlns:stucco=\\\"gov.ornl.stucco\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" id=\\\"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\\\" xsi:type=\\\"coa:CourseOfActionType\\\" xmlns=\\\"http://xml/metadataSharing.xsd\\\"><coa:Title>Course_Of_Action<\\/coa:Title><coa:Description>Course_Of_Action description<\\/coa:Description><coa:Information_Source><stixCommon:Identity><stixCommon:Name>Source One<\\/stixCommon:Name><\\/stixCommon:Identity><stixCommon:Contributing_Sources><stixCommon:Source><stixCommon:Identity><stixCommon:Name>Source Two<\\/stixCommon:Name><\\/stixCommon:Identity><\\/stixCommon:Source><\\/stixCommon:Contributing_Sources><\\/coa:Information_Source><\\/coa:Course_Of_Action>\", " +
+            "               \"vertexType\":\"Course_Of_Action\", " +
+            "               \"name\":\"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\", " +
+            "               \"description\":[\"Course_Of_Action description\"], " +
+            "               \"source\":[\"Source One\",\"Source Two\"] " +
+            "           } " +
+            "       }, " +
+            "       \"edges\":[ " +
+            "           { " +
+            "               \"outVertTable\":\"Campaign\", " +
+            "               \"outVertID\":\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\", " +
+            "               \"inVertTable\":\"Threat_Actor\", " +
+            "               \"inVertID\":\"stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99\", " +
+            "               \"relation\":\"Attribution\" " +
+            "           },{ " +
+            "               \"outVertTable\":\"Indicator\", " +
+            "               \"outVertID\":\"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\", " +
+            "               \"inVertTable\":\"Campaign\", " +
+            "               \"inVertID\":\"stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c\", " +
+            "               \"relation\":\"RelatedCampaign\" " +
+            "           },{ " +
+            "               \"outVertTable\":\"Indicator\", " +
+            "               \"outVertID\":\"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\", " +
+            "               \"inVertTable\":\"Observable\", " +
+            "               \"inVertID\":\"stucco:observable-bb95c949-7720-4b16-a491-93e0453b2785\", " +
+            "               \"relation\":\"Observable\" " +
+            "           },{ " +
+            "               \"outVertTable\":\"Indicator\", " +
+            "               \"outVertID\":\"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\", " +
+            "               \"inVertTable\":\"Course_Of_Action\", " +
+            "               \"inVertID\":\"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\", " +
+            "               \"relation\":\"SuggestedCOA\" " +
+            "           },{ " +
+            "               \"outVertTable\":\"Indicator\", " +
+            "               \"outVertID\":\"stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca\", " +
+            "               \"inVertTable\":\"TTP\", " +
+            "               \"inVertID\":\"stucco:ttp-8da79cbe-750d-4426-b960-baf8e67ec714\", " +
+            "               \"relation\":\"IndicatedTTP\" " +
+            "           },{ " +
+            "               \"outVertTable\":\"Weakness\", " +
+            "               \"outVertID\":\"stucco:et-52962ed3-1c7f-4cac-bedb-d49bb429b625\", " +
+            "               \"inVertTable\":\"Course_Of_Action\", " +
+            "               \"inVertID\":\"stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7\", " +
+            "               \"relation\":\"PotentialCOA\" " +
+            "           } " +
+            "       ] " +
+            "   }";
+
+        JSONObject graph = new JSONObject(graphString);
+        JSONObject vertices = graph.getJSONObject("vertices");
+        JSONArray edges = graph.getJSONArray("edges");
+
+        conn.bulkLoadGraph(graph);
+
+        String indicatorID = "stucco:indicator-f6c15754-2fe0-4b1e-a43a-8fc1df4e49ca";
+        String weaknessID = "stucco:et-52962ed3-1c7f-4cac-bedb-d49bb429b625";
+        String ttpID = "stucco:ttp-8da79cbe-750d-4426-b960-baf8e67ec714";
+        String observableID = "stucco:observable-bb95c949-7720-4b16-a491-93e0453b2785";
+        String taID = "stucco:threat-9f055e12-d799-47d8-84a5-f018ee1ccb99";
+        String campaignID = "stucco:campaign-a2dec921-6a3f-49e4-b415-402b376fff5c";
+        String coaID = "stucco:coa-ba3d4963-caa5-4f65-b224-8f0d5ab38aa7";
+
+        Map<String, Object> indicator = conn.jsonVertToMap(vertices.getJSONObject(indicatorID));
+        Map<String, Object> indicatorDB = conn.getVertByID(indicatorID);
+        assertEquals(indicator, indicatorDB);
+
+        Map<String, Object> weakness = conn.jsonVertToMap(vertices.getJSONObject(weaknessID));
+        Map<String, Object> weaknessDB = conn.getVertByID(weaknessID);
+        assertEquals(weakness, weaknessDB);
+
+        Map<String, Object> ttp = conn.jsonVertToMap(vertices.getJSONObject(ttpID));
+        Map<String, Object> ttpDB = conn.getVertByID(ttpID);
+        assertEquals(ttp, ttpDB);
+
+        Map<String, Object> observable = conn.jsonVertToMap(vertices.getJSONObject(observableID));
+        Map<String, Object> observableDB = conn.getVertByID(observableID);
+        assertEquals(observable, observableDB);
+
+        Map<String, Object> ta = conn.jsonVertToMap(vertices.getJSONObject(taID));
+        Map<String, Object> taDB = conn.getVertByID(taID);
+        assertEquals(ta, taDB);
+
+        Map<String, Object> campaign = conn.jsonVertToMap(vertices.getJSONObject(campaignID));
+        Map<String, Object> campaignDB = conn.getVertByID(campaignID);
+        assertEquals(campaign, campaignDB);
+
+        Map<String, Object> coa = conn.jsonVertToMap(vertices.getJSONObject(coaID));
+        Map<String, Object> coaDB = conn.getVertByID(coaID);
+        assertEquals(coa, coaDB);
+
+        List<Map<String, Object>> outEdges = conn.getOutEdges(campaignID);
+        assertTrue(outEdges.contains(convertEdgeToMap(edges.getJSONObject(0))));
+
+        outEdges = conn.getOutEdges(indicatorID);
+        assertTrue(outEdges.contains(convertEdgeToMap(edges.getJSONObject(1))));
+        assertTrue(outEdges.contains(convertEdgeToMap(edges.getJSONObject(2))));
+        assertTrue(outEdges.contains(convertEdgeToMap(edges.getJSONObject(3))));
+        assertTrue(outEdges.contains(convertEdgeToMap(edges.getJSONObject(4))));
+
+        outEdges = conn.getOutEdges(weaknessID);
+        assertTrue(outEdges.contains(convertEdgeToMap(edges.getJSONObject(5))));
 
         for (String id : (Set<String>) graph.getJSONObject("vertices").keySet()) {
             conn.removeVertByID(id);
