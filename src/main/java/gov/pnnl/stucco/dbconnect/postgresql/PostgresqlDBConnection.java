@@ -1353,6 +1353,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 if (copyIn.isActive()) {
                     copyIn.cancelCopy();
                 }
+                statement.execute(buildString("DROP TABLE IF EXISTS ", generatedTableName, ";"));
             } catch (SQLException e) {
                 e.printStackTrace();
             }
