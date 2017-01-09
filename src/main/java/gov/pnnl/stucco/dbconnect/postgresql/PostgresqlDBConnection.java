@@ -14,11 +14,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.PreparedStatement; 
-import java.sql.ResultSet;   
+import java.sql.ResultSet;    
 import java.sql.SQLException;   
 import java.sql.Array;
 import java.sql.Timestamp;   
 import java.sql.Types; 
+
+import java.net.URISyntaxException;
 
 import org.postgresql.copy.CopyManager; 
 import org.postgresql.copy.CopyIn;
@@ -45,6 +47,7 @@ import java.util.Collection;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.dbcp2.BasicDataSource;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -63,6 +66,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private Connection connection;
     private Statement statement;
     private PostgresqlDBPreparedStatement ps;
+    private BasicDataSource connectionPool;
 
     private String hostname;
     private String port;
@@ -93,7 +97,18 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         url = buildString("jdbc:postgresql://", hostname, ":", port, "/", dbName);
         username = (configuration.containsKey("username")) ? configuration.get("username").toString() : null;
         password = (configuration.containsKey("password")) ? configuration.get("password").toString() : null;
+        
+        initConnectionPool();
         initDB();
+    }
+
+    private void initConnectionPool() {
+        connectionPool = new BasicDataSource();
+        connectionPool.setUsername(username);
+        connectionPool.setPassword(password);
+        connectionPool.setDriverClassName("org.postgresql.Driver");
+        connectionPool.setUrl(url);
+        connectionPool.setInitialSize(5);
     }
 
     private void initDB() {
@@ -159,12 +174,10 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         try {
             String tableName = properties.get("vertexType").toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.ADD_VERTEX);
-            System.out.println(preparedStatement.toString());
             JSONObject table = vertTables.getJSONObject(tableName).getJSONObject("columns");
             JSONArray order = vertTables.getJSONObject(tableName).getJSONArray("order");
             for (int i = 3; i < order.length(); i++) {
                 String column = order.getString(i);
-                System.out.println(column);
                 int index = i - 2;
                 switch (Columns.valueOf(column).type) {
                     case TEXT: 
@@ -201,8 +214,6 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 }
             }
 
-            System.out.println(preparedStatement.toString());
-
             preparedStatement.executeUpdate();
             ResultSet rs = preparedStatement.getGeneratedKeys();
             if (rs.next()) {
@@ -228,21 +239,27 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get vert", id, "id");
 
         Map<String, Object> vertex = null;
-        for (Object key : vertTables.keySet()) {
-            String tableName = key.toString();
-            PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERT_BY_ID);
-            try {
-                preparedStatement.setObject(1, id);
-                ResultSet rs = preparedStatement.executeQuery();
+        try {
+
+            Connection connection = connectionPool.getConnection();
+            Statement poolStatement = connection.createStatement(); 
+            for (Object key : vertTables.keySet()) {
+                String tableName = key.toString();
+                String query = String.format("SELECT * FROM %s WHERE _id ='%s';", tableName, id);
+
+                ResultSet rs = poolStatement.executeQuery(query);
                 if (rs.next()) {
                     vertex = vertResultSetToMap(tableName, rs);
                     break;
                 }
-            } catch (SQLException e) {
-                logger.warn(e.getLocalizedMessage());
-                logger.warn(getStackTrace(e));
-                throw new StuccoDBException("failed to get vertex by id");
             }
+            if (connection != null) {
+                connection.close();
+            }
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            throw new StuccoDBException("failed to get vertex by id");
         }
 
         return vertex; 
@@ -330,16 +347,16 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edges", outVertID, "outVertID");
 
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
-        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_OUT_EDGES_PAGE);
+        String query = String.format("SELECT * FROM Edges WHERE outVertID ='%s' order by timestamp desc offset %d limit %d;", outVertID, offset, limit);
         try {
-            preparedStatement.setObject(1, outVertID);
-            preparedStatement.setInt(2, offset);
-            preparedStatement.setInt(3, limit);
-            ResultSet rs = preparedStatement.executeQuery();
+            Connection connection = connectionPool.getConnection();
+            Statement poolStatement = connection.createStatement(); 
+            ResultSet rs = poolStatement.executeQuery(query);
             while (rs.next()) {
                 Map<String, Object> map = edgesResultSetToMap(rs);
                 edges.add(map);
             }
+            connection.close();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
@@ -386,17 +403,16 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edges", inVertID, "inVertID");
 
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
-        PreparedStatement preparedStatement = ps.getPreparedStatement("Edges", API.GET_IN_EDGES_PAGE);
-
+        String query = String.format("SELECT * FROM Edges WHERE inVertID ='%s' order by timestamp desc offset %d limit %d;", inVertID, offset, limit);
         try {
-            preparedStatement.setObject(1, inVertID);
-            preparedStatement.setInt(2, offset);
-            preparedStatement.setInt(3, limit);
-            ResultSet rs = preparedStatement.executeQuery();
+            Connection connection = connectionPool.getConnection();
+            Statement poolStatement = connection.createStatement(); 
+            ResultSet rs = poolStatement.executeQuery(query);
             while (rs.next()) {
                 Map<String, Object> map = edgesResultSetToMap(rs);
                 edges.add(map);
             }
+            connection.close();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
@@ -1122,10 +1138,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     private List<String> getVertIDs(String query) {
         List<String> vertIDs = new ArrayList<String>();
         try {
+            Connection connection = connectionPool.getConnection();
+            Statement statement = connection.createStatement(); 
             ResultSet rs = statement.executeQuery(query);
             while (rs.next()) {
                 vertIDs.add(rs.getString("vertID"));
             }
+            connection.close();
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
