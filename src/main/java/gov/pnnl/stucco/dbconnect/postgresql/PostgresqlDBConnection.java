@@ -694,23 +694,56 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                 String key = constraint.getProp();
                 if (key.equals("vertexType")) {
                     String tableName = constraint.getVal().toString().replaceAll("'", "");
+                    if (columnList.contains("name")) {
+                        JSONObject tableColumns = vertTables.getJSONObject(tableName).getJSONObject("columns");
+                        if (tableColumns.has("alias")) {
+                            Object name = getNameConstraint(constraints);
+                            constraintsList = buildString(constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)));
+                        }
+                    }
                     String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
                     vertIDs.addAll(getVertIDs(query));
                     break;
                 }
             }
         } else {
+            Object name = null;
+            if (columnList.contains("name")) {
+                name = getNameConstraint(constraints);
+            }
             for (Object table : vertTables.keySet()) {
                 String tableName = table.toString();
                 if (containsAllColumns(tableName, columnList)) {
-                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
-                    vertIDs.addAll(getVertIDs(query));
+                    if (name != null) {
+                        JSONObject tableColumns = vertTables.getJSONObject(tableName).getJSONObject("columns");
+                        if (tableColumns.has("alias")) {
+                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)), " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                            vertIDs.addAll(getVertIDs(query));
+                        }
+                    } else {
+                        String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                        vertIDs.addAll(getVertIDs(query));
+                    }
                 }
             }
         }
         
         return vertIDs;
     };
+
+    private Object getNameConstraint(List<DBConstraint> constraints) {
+        Object name = null;
+        for (int i = 0; i < constraints.size(); i++) {
+            DBConstraint constraint = constraints.get(i);
+            String key = constraint.getProp();
+            if (key.equals("name")) {
+                name = constraint.getVal();
+                break;
+            }
+        }
+
+        return name;
+    }
 
     private List<String> getConstraintProperties(List<DBConstraint> constraints) {
         List<String> list = new ArrayList<String>();
@@ -753,6 +786,14 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         }
 
         return constraintsList.toString();
+    }
+
+    private String buildConstraintsSubquery(DBConstraint constraint) {
+        String cond = constraint.condString(constraint.getCond());
+        String key = constraint.getProp();
+        Object value = constraint.getVal();
+
+        return buildString(key, " ", cond, " ", value);
     }
 
     private boolean containsAllColumns(String tableName, List<String> columnNames) {
@@ -1211,7 +1252,13 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         if (condition == Condition.substring) {
             value = buildString("'%", value, "%'");
         } else if (condition == Condition.contains) {
-            value = buildString("ARRAY['", value, "']");
+            if (value instanceof String) {
+                String str = value.toString();
+                if (!str.startsWith("\'")) {
+                    value = buildString("'", value, "'");
+                }
+            }
+            value = buildString("ARRAY[", value, "]");
         } else {
             value = buildString("'", value, "'");
         }
