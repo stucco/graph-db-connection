@@ -12,10 +12,10 @@ import gov.pnnl.stucco.dbconnect.postgresql.PostgresqlDBPreparedStatement.API;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.Statement;
+import java.sql.Statement; 
 import java.sql.PreparedStatement; 
 import java.sql.ResultSet;    
-import java.sql.SQLException;   
+import java.sql.SQLException;    
 import java.sql.Array;
 import java.sql.Timestamp;   
 import java.sql.Types; 
@@ -682,7 +682,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * @return list of vertex IDs
      */
     public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offset, int limit) {
-        sanityCheck(constraints);
+        sanityCheck(constraints); 
 
         List<String> vertIDs = new ArrayList<String>();
         //TODO: check if constraints contain vertexType to avoid searching all tables
@@ -711,16 +711,24 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             if (columnList.contains("name")) {
                 name = getNameConstraint(constraints);
             }
+            System.out.println("name: " + name);
             for (Object table : vertTables.keySet()) {
                 String tableName = table.toString();
                 if (containsAllColumns(tableName, columnList)) {
                     if (name != null) {
+                        System.out.println("searching by name ... ");
                         JSONObject tableColumns = vertTables.getJSONObject(tableName).getJSONObject("columns");
                         if (tableColumns.has("alias")) {
                             String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)), " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                            System.out.println(query);
+                            vertIDs.addAll(getVertIDs(query));
+                        } else {
+                            System.out.println("Searching by some other peroperties ... ");
+                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
                             vertIDs.addAll(getVertIDs(query));
                         }
                     } else {
+                        System.out.println("Searching by some other peroperties ... ");
                         String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
                         vertIDs.addAll(getVertIDs(query));
                     }
