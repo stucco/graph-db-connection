@@ -711,24 +711,19 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             if (columnList.contains("name")) {
                 name = getNameConstraint(constraints);
             }
-            System.out.println("name: " + name);
             for (Object table : vertTables.keySet()) {
                 String tableName = table.toString();
                 if (containsAllColumns(tableName, columnList)) {
                     if (name != null) {
-                        System.out.println("searching by name ... ");
                         JSONObject tableColumns = vertTables.getJSONObject(tableName).getJSONObject("columns");
                         if (tableColumns.has("alias")) {
                             String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)), " order by timestamp desc offset ", offset, " LIMIT ", limit);
-                            System.out.println(query);
                             vertIDs.addAll(getVertIDs(query));
                         } else {
-                            System.out.println("Searching by some other peroperties ... ");
                             String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
                             vertIDs.addAll(getVertIDs(query));
                         }
                     } else {
-                        System.out.println("Searching by some other peroperties ... ");
                         String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
                         vertIDs.addAll(getVertIDs(query));
                     }
