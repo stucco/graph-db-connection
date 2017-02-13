@@ -524,9 +524,10 @@ BEGIN;
 				_i text;
 		BEGIN    
 			FOR _i IN SELECT * FROM json_array_elements_text(_jsonArray)
-
 			LOOP
-				_arraySql = (_arraySql || _i);
+				IF _i != 'Malware' THEN
+					_arraySql = (_arraySql || _i);
+				END IF;
 			END LOOP;
 
 			RETURN _arraySql;
