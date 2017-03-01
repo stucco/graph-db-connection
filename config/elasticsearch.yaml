@@ -1,0 +1,4 @@
+elasticsearch_connection:
+  cluster: elasticsearch_yv4
+  host: localhost
+  port: 9300
