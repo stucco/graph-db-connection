@@ -1,13 +1,14 @@
 package gov.pnnl.stucco.dbconnect.elasticsearch;
 
 import java.util.Map;
-
 import java.io.FileNotFoundException;
 
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -24,15 +25,18 @@ public class ElasticsearchDBConnection {
 	private TransportClient prebuiltClient = null;
 	private Settings settings = null;
 	private InetSocketTransportAddress inetAddress = null;
+	private static Logger logger = null;
 
 
 	public ElasticsearchDBConnection() throws UnknownHostException {
 		prebuildClient();
+		logger = LoggerFactory.getLogger(ElasticsearchDBConnection.class);
 	} 
 
 	public ElasticsearchDBConnection(String configFile) throws UnknownHostException, FileNotFoundException {
 		setConnectionInfo(configFile);
 		prebuildClient();
+		logger = LoggerFactory.getLogger(ElasticsearchDBConnection.class);
 	}
 
 	private void setConnectionInfo(String configFile) throws UnknownHostException, FileNotFoundException {
@@ -51,6 +55,6 @@ public class ElasticsearchDBConnection {
 	}
 
 	public Connection getConnection() {
-		return new Connection(prebuiltClient, inetAddress);
+		return new Connection(prebuiltClient, inetAddress, logger);
 	}
 }

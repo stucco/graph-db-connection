@@ -2,6 +2,8 @@ package gov.pnnl.stucco.dbconnect.elasticsearch;
 
 import java.net.UnknownHostException;
 
+import org.json.JSONArray;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -36,10 +38,11 @@ public class ElasticsearchDBConnectionTest extends TestCase {
 
             connection.open();
 //            connection.printDBContent();
-//            connection.getVertByName("128.219.49.14");
-//            connection.getVertByName("80");
-//            connection.getVertByName("50.7.55.82:80");
-            connection.getVertByName("128.219.49.14:38828_through_50.7.55.82:80");
+//            JSONObject vertex = connection.getVertByName("128.219.49.14");
+//            JSONObject vertex = connection.getVertByName("80");
+//            JSONObject vertex = connection.getVertByName("50.7.55.82:80");
+//            JSONObject vertex = connection.getVertByName("128.219.49.14:38828_through_50.7.55.82:80");
+//            JSONArray array = connection.getVertByType("flow",1,5);
             connection.close();
         } catch (UnknownHostException e) {
             e.printStackTrace();
