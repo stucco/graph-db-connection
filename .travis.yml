@@ -2,9 +2,12 @@ sudo: required
 dist: trusty
 language: java
 jdk:
-  - oraclejdk7
-  - openjdk7
   - oraclejdk8
+before_install:
+  - mvn --non-recursive scm:checkout -Dmodule.name=STIXExtractors -DscmVersion=1.0.0 -DscmVersionType=tag
+  - cd STIXExtractors
+  - mvn -e clean install -Dmaven.test.skip=true
+  - cd ..
 addons:
   postgresql: "9.5"
 before_script:
