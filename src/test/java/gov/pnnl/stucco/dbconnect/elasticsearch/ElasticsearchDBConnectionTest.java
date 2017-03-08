@@ -1,12 +1,10 @@
-package gov.ornl.stucco.elasticsearch;
+package gov.pnnl.stucco.dbconnect.elasticsearch;
+
+import java.net.UnknownHostException;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-
-import java.net.UnknownHostException;
-
-import java.io.FileNotFoundException;
 
 /**
  * Unit test for ElasticsearchDBConnection
@@ -33,17 +31,21 @@ public class ElasticsearchDBConnectionTest extends TestCase {
      */
     public void testApp() {
         try {
-            ElasticsearchDBConnection es = new ElasticsearchDBConnection("./config/elasticsearch.yaml");
+            ElasticsearchDBConnection es = new ElasticsearchDBConnection(); //new ElasticsearchDBConnection("./config/elasticsearch.yaml");
             Connection connection = es.getConnection();
 
             connection.open();
-            //connection.printDBContent();
+//            connection.printDBContent();
+//            connection.getVertByName("128.219.49.14");
+//            connection.getVertByName("80");
+//            connection.getVertByName("50.7.55.82:80");
+            connection.getVertByName("128.219.49.14:38828_through_50.7.55.82:80");
             connection.close();
         } catch (UnknownHostException e) {
             e.printStackTrace();
-        } catch (FileNotFoundException e) {
+        } /*catch (FileNotFoundException e) {
             e.printStackTrace();
-        }
+        }*/
         assertTrue( true );
     }
 }

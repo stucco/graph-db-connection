@@ -1,4 +1,4 @@
-package gov.ornl.stucco.elasticsearch;
+package gov.pnnl.stucco.dbconnect.elasticsearch;
 
 import java.util.Map;
 
@@ -21,7 +21,7 @@ public class ElasticsearchDBConnection {
 	private static String HOST = "localhost";
 	private static int PORT = 9300;
 
-	private PreBuiltTransportClient prebuiltClient = null;
+	private TransportClient prebuiltClient = null;
 	private Settings settings = null;
 	private InetSocketTransportAddress inetAddress = null;
 
@@ -45,7 +45,7 @@ public class ElasticsearchDBConnection {
 	}
 
 	private void prebuildClient() throws UnknownHostException {
-		Settings settings = Settings.builder().put("cluster.name", CLUSTER).build();
+		settings = Settings.builder().put("cluster.name", CLUSTER).build();
 		prebuiltClient = new PreBuiltTransportClient(settings);
 		inetAddress = new InetSocketTransportAddress(InetAddress.getByName(HOST), PORT);
 	}

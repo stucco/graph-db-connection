@@ -1,4 +1,4 @@
-package gov.ornl.stucco.elasticsearch;
+package gov.pnnl.stucco.dbconnect.elasticsearch;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
