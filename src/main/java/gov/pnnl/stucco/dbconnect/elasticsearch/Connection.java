@@ -15,13 +15,10 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 
-import gov.ornl.stucco.graph_extractors.SituGraphExtractor;
 import gov.ornl.stucco.utils.GraphUtils;
 import gov.pnnl.stucco.dbconnect.DBConstraint; 
 
@@ -53,30 +50,6 @@ public class Connection {
 		client.close();
 	}
 
-	
-//	public void printDBContent() {
-//		StringBuilder dbContent = new StringBuilder();
-//		SearchResponse response = client.prepareSearch("situ_2015-07-10").get();
-//		SearchHit[] results = response.getHits().getHits();
-//		for(SearchHit hit : results){
-//			System.out.println(hit);
-//		    String entry = hit.getSourceAsString();
-//		    dbContent.append(entry);
-//		    dbContent.append("\n");
-//		}
-//		System.out.println(dbContent.toString());
-//
-//		JSONObject graph = extractGraph(dbContent.toString());
-//		System.out.println(graph.toString(2));
-//	}
-//
-//	
-//	private JSONObject extractGraph(String situInfo) {
-//		SituGraphExtractor situExtractor = new SituGraphExtractor(situInfo);
-//		JSONObject graph = situExtractor.getGraph();
-//
-//		return graph;
-//	}
 	
 	//TODO: Use index, source name, etc from config yml file
 	
@@ -120,7 +93,10 @@ public class Connection {
 					if (addressPieces.length == 2) {
 						String ip = addressPieces[0];
 						String port = addressPieces[1];
-						SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("srcIP", ip)).must(QueryBuilders.termQuery("srcPort", port))).setSize(1).get();
+						SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery()
+								.should(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("srcIP", ip)).must(QueryBuilders.termQuery("srcPort", port)))
+								.should(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("dstIP", ip)).must(QueryBuilders.termQuery("dstPort", port))))
+								.setSize(1).get();
 						if (response.getHits().getTotalHits() >= 1) {
 							String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
 							vertJSON = GraphUtils.setIpJson(ipID, ip, source, "Situ");
@@ -128,17 +104,6 @@ public class Connection {
 							String portID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
 							vertJSON = GraphUtils.setPortJson(portID, port, source, "Situ");
 							edgeArray.put(vertJSON);
-						}
-						else {
-							response = searchRequest.setQuery(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("dstIP", ip)).must(QueryBuilders.termQuery("dstPort", port))).setSize(1).get();
-							if (response.getHits().getTotalHits() >= 1) {
-								String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
-								vertJSON = GraphUtils.setIpJson(ipID, ip, source, "Situ");
-								edgeArray.put(vertJSON);
-								String portID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
-								vertJSON = GraphUtils.setPortJson(portID, port, source, "Situ");
-								edgeArray.put(vertJSON);
-							}
 						}
 					}
 				}
@@ -148,7 +113,7 @@ public class Connection {
 				logger.warn("Unknown vertex type '" + vertType + "' encountered in getInEdgesPage().");
 			}
 		}
-		System.out.println(edgeArray);
+		
 		return edgeArray;
 	}
 
@@ -157,15 +122,111 @@ public class Connection {
 		JSONArray edgeArray = new JSONArray();
 		JSONObject vertJSON = new JSONObject();
 		
+		int startIndex = pageNumber * pageSize;
+		
 		if (client != null) {
 			if (vertType.equalsIgnoreCase("ip")) {
 				
-				
+				Pattern p = Pattern.compile("^(\\d{1,3}\\.){3}\\d{1,3}$");
+				Matcher m = p.matcher(vertName);
+				if (m.matches()) {
+					Set<String> addrSet = new HashSet<String>();
+					SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery()
+							.should(QueryBuilders.termQuery("srcIP", vertName))
+							.should(QueryBuilders.termQuery("dstIP", vertName))).get();
+					for (SearchHit hit : response.getHits().getHits()) {
+						Map<String,Object> sourceMap = hit.getSource();
+						if (sourceMap.get("srcIP").toString().equalsIgnoreCase(vertName)) {
+							
+							StringBuilder addrName = new StringBuilder();
+							addrName.append(vertName);
+							addrName.append(":");
+							addrName.append(sourceMap.get("srcPort").toString());
+							
+							if (!addrSet.contains(addrName.toString())) {
+								addrSet.add(addrName.toString());
+								if (addrSet.size() >= (pageNumber * pageSize + 1)) {
+									String addrID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+									vertJSON = GraphUtils.setAddressJson(addrID, vertName, null, sourceMap.get("srcPort").toString(), null, source, "Situ");
+									edgeArray.put(vertJSON);
+									if (edgeArray.length() == pageSize) {
+										return edgeArray;
+									}
+								}
+							}
+						}
+						else {
+							StringBuilder addrName = new StringBuilder();
+							addrName.append(vertName);
+							addrName.append(":");
+							addrName.append(sourceMap.get("dstPort").toString());
+							
+							if (!addrSet.contains(addrName.toString())) {
+								addrSet.add(addrName.toString());
+								if (addrSet.size() >= (pageNumber * pageSize + 1)) {
+									String addrID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+									vertJSON = GraphUtils.setAddressJson(addrID, vertName, null, sourceMap.get("dstPort").toString(), null, source, "Situ");
+									edgeArray.put(vertJSON);
+									if (edgeArray.length() == pageSize) {
+										return edgeArray;
+									}
+								}
+							}
+						}
+					}
+				}
 				
 			} 
 			else if (vertType.equalsIgnoreCase("port")) {
 				
-				
+				Pattern p = Pattern.compile("^\\d+$");
+				Matcher m = p.matcher(vertName);
+				if (m.matches()) {
+					Set<String> addrSet = new HashSet<String>(); 
+					SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery()
+							.should(QueryBuilders.termQuery("srcPort", vertName))
+							.should(QueryBuilders.termQuery("dstPort", vertName))).get();
+					for (SearchHit hit : response.getHits().getHits()) {
+						Map<String,Object> sourceMap = hit.getSource();
+						if (sourceMap.get("srcPort").toString().equalsIgnoreCase(vertName)) {
+							
+							StringBuilder addrName = new StringBuilder();
+							addrName.append(sourceMap.get("srcIP").toString());
+							addrName.append(":");
+							addrName.append(vertName);
+							
+							if (!addrSet.contains(addrName.toString())) {
+								addrSet.add(addrName.toString());
+								if (addrSet.size() >= (pageNumber * pageSize + 1)) {
+									String addrID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+									vertJSON = GraphUtils.setAddressJson(addrID, sourceMap.get("srcIP").toString(), null, vertName, null, source, "Situ");
+									edgeArray.put(vertJSON);
+									if (edgeArray.length() == pageSize) {
+										return edgeArray;
+									}
+								}
+							}
+						}
+						else {
+							StringBuilder addrName = new StringBuilder();
+							addrName.append(sourceMap.get("dstIP").toString());
+							addrName.append(":");
+							addrName.append(vertName);
+							
+							if (!addrSet.contains(addrName.toString())) {
+								addrSet.add(addrName.toString());
+								if (addrSet.size() >= (pageNumber * pageSize + 1)) {
+									String addrID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+									vertJSON = GraphUtils.setAddressJson(addrID, sourceMap.get("dstIP").toString(), null, vertName, null, source, "Situ");
+									edgeArray.put(vertJSON);
+									if (edgeArray.length() == pageSize) {
+										return edgeArray;
+									}
+								}
+							}
+						}
+					}
+				}
 				
 			} 
 			else if (vertType.equalsIgnoreCase("address")) {
@@ -177,7 +238,19 @@ public class Connection {
 					if (addressPieces.length == 2) {
 						String ip = addressPieces[0];
 						String port = addressPieces[1];
-						
+						SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery()
+								.should(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("srcIP", ip)).must(QueryBuilders.termQuery("srcPort", port)))
+								.should(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("dstIP", ip)).must(QueryBuilders.termQuery("dstPort", port))))
+								.setFrom(startIndex).setSize(pageSize).get();
+						for (SearchHit hit : response.getHits().getHits()) {
+							Map<String, Object> sourceMap = hit.getSource();
+							String flowID = GraphUtils.buildString("stucco:Observable-", hit.getId());
+							String srcAddressID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+							String dstAddressID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+							JSONObject flowSource = new JSONObject(hit.getSourceAsString());
+							vertJSON = GraphUtils.setFlowJson(flowID, sourceMap.get("srcIP").toString(), sourceMap.get("srcPort").toString(), srcAddressID, sourceMap.get("dstIP").toString(), sourceMap.get("dstPort").toString(), dstAddressID, sourceMap.get("proto").toString(), source, "Situ", flowSource);
+							edgeArray.put(vertJSON);
+						}
 					}
 				}
 				
@@ -187,7 +260,6 @@ public class Connection {
 			}
 		}
 		
-		System.out.println(edgeArray);
 		return edgeArray;
 	}
 
@@ -202,7 +274,6 @@ public class Connection {
 				SearchResponse response = searchRequest.setQuery(QueryBuilders.multiMatchQuery((String)vertName, "srcPort", "dstPort")).setSize(1).get();
 				long totalHits = response.getHits().getTotalHits();
 				if (totalHits >= 1) {
-//					SearchHit result = response.getHits().getHits()[0];
 					String portID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
 					vertJSON = GraphUtils.setPortJson(portID, vertName, source, "Situ");
 				}
@@ -215,7 +286,6 @@ public class Connection {
 				SearchResponse response = searchRequest.setQuery(QueryBuilders.multiMatchQuery((String)vertName, "srcIP", "dstIP")).setSize(1).get();
 				long totalHits = response.getHits().getTotalHits();
 				if (totalHits >= 1) {
-//					SearchHit result = response.getHits().getHits()[0];
 					String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
 					vertJSON = GraphUtils.setIpJson(ipID, vertName, source, "Situ");
 				}
@@ -229,19 +299,13 @@ public class Connection {
 				if (addressPieces.length == 2) {
 					String ip = addressPieces[0];
 					String port = addressPieces[1];
-					SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("srcIP", ip)).must(QueryBuilders.termQuery("srcPort", port))).setSize(1).get();
-					long totalHits = response.getHits().getTotalHits();
-					if (totalHits >= 1) {
-						String srcAddressID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
-						vertJSON = GraphUtils.setAddressJson(srcAddressID, ip, null, port, null, source, "Situ");
-					}
-					else {
-						response = client.prepareSearch("situ_2015-07-10").setQuery(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("dstIP", ip)).must(QueryBuilders.termQuery("dstPort", port))).setSize(1).get();
-						totalHits = response.getHits().getTotalHits();
-						if (totalHits >= 1) {
-							String dstAddressID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
-							vertJSON = GraphUtils.setAddressJson(dstAddressID, ip, null, port, null, source, "Situ");
-						}
+					SearchResponse response = searchRequest.setQuery(QueryBuilders.boolQuery()
+							.should(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("srcIP", ip)).must(QueryBuilders.termQuery("srcPort", port)))
+							.should(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("dstIP", ip)).must(QueryBuilders.termQuery("dstPort", port))))
+							.setSize(1).get();
+					if (response.getHits().getTotalHits() >= 1) {
+						String addressID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+						vertJSON = GraphUtils.setAddressJson(addressID, ip, null, port, null, source, "Situ");
 					}
 					return vertJSON;
 				}
@@ -282,49 +346,65 @@ public class Connection {
 	public JSONArray getVertByType(String vertType, int pageNumber, int pageSize) {
 		JSONArray vertArray = new JSONArray();
 		JSONObject vertJSON = null;
+		int size = (pageNumber+1) * pageSize * 3;
 		
 		if (client != null) {
 			if (vertType.equalsIgnoreCase("ip")) {
 				Set<String> ipSet = new HashSet<String>();
-				SearchResponse response = searchRequest.addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(pageSize*3)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(pageSize*3)).execute().actionGet();
-				Terms ips = response.getAggregations().get("srcIPs");
-								
-				for (Terms.Bucket entry : ips.getBuckets()) {
-					ipSet.add(entry.getKeyAsString());
+				SearchResponse response = searchRequest.setSize(size).get();
+				for (SearchHit hit : response.getHits().getHits()) {
+					Map<String,Object> sourceMap = hit.getSource();
+					if (!ipSet.contains(sourceMap.get("srcIP").toString())) {
+						ipSet.add(sourceMap.get("srcIP").toString());
+						if (ipSet.size() >= (pageNumber * pageSize + 1)) {
+							String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+							vertJSON = GraphUtils.setIpJson(ipID, sourceMap.get("srcIP").toString(), source, "Situ");
+							vertArray.put(vertJSON);
+							if (vertArray.length() == pageSize) {
+								return vertArray;
+							}
+						}
+					}
+					if (!ipSet.contains(sourceMap.get("dstIP").toString())) {
+						ipSet.add(sourceMap.get("dstIP").toString());
+						if (ipSet.size() >= (pageNumber * pageSize + 1)) {
+							String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+							vertJSON = GraphUtils.setIpJson(ipID, sourceMap.get("dstIP").toString(), source, "Situ");
+							vertArray.put(vertJSON);
+							if (vertArray.length() == pageSize) {
+								return vertArray;
+							}
+						}
+					}
 				}
-				ips = response.getAggregations().get("dstIPs");
-				for (Terms.Bucket entry : ips.getBuckets()) {
-					ipSet.add(entry.getKeyAsString());
-				}
-				
-				String[] ipArray = new String[ipSet.size()];
-				ipArray = ipSet.toArray(ipArray);
-				for (int i=(pageNumber*pageSize); i<Math.min((pageNumber+1)*pageSize,ipArray.length); i++) {
-					String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
-					vertJSON = GraphUtils.setIpJson(ipID, ipArray[i], source, "Situ");
-					vertArray.put(vertJSON);
-				}
-				
 			} 
 			else if (vertType.equalsIgnoreCase("port")) {
 				Set<String> portSet = new HashSet<String>();
-				SearchResponse response = searchRequest.addAggregation(AggregationBuilders.terms("srcPorts").field("srcPort").size(pageSize*3)).addAggregation(AggregationBuilders.terms("dstPorts").field("dstPort").size(pageSize*3)).execute().actionGet();
-				Terms ports = response.getAggregations().get("srcPorts");
-								
-				for (Terms.Bucket entry : ports.getBuckets()) {
-					portSet.add(entry.getKeyAsString());
-				}
-				ports = response.getAggregations().get("dstPorts");
-				for (Terms.Bucket entry : ports.getBuckets()) {
-					portSet.add(entry.getKeyAsString());
-				}
-				
-				String[] portArray = new String[portSet.size()];
-				portArray = portSet.toArray(portArray);
-				for (int i=(pageNumber*pageSize); i<Math.min((pageNumber+1)*pageSize,portArray.length); i++) {
-					String portID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
-					vertJSON = GraphUtils.setPortJson(portID, portArray[i], source, "Situ");
-					vertArray.put(vertJSON);
+				SearchResponse response = searchRequest.setSize(size).get();
+				for (SearchHit hit : response.getHits().getHits()) {
+					Map<String,Object> sourceMap = hit.getSource();
+					if (!portSet.contains(sourceMap.get("srcPort").toString())) {
+						portSet.add(sourceMap.get("srcPort").toString());
+						if (portSet.size() >= (pageNumber * pageSize + 1)) {
+							String portID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+							vertJSON = GraphUtils.setIpJson(portID, sourceMap.get("srcPort").toString(), source, "Situ");
+							vertArray.put(vertJSON);
+							if (vertArray.length() == pageSize) {
+								return vertArray;
+							}
+						}
+					}
+					if (!portSet.contains(sourceMap.get("dstPort").toString())) {
+						portSet.add(sourceMap.get("dstPort").toString());
+						if (portSet.size() >= (pageNumber * pageSize + 1)) {
+							String portID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
+							vertJSON = GraphUtils.setIpJson(portID, sourceMap.get("dstPort").toString(), source, "Situ");
+							vertArray.put(vertJSON);
+							if (vertArray.length() == pageSize) {
+								return vertArray;
+							}
+						}
+					}
 				}
 				
 			} 
@@ -374,7 +454,7 @@ public class Connection {
 				logger.warn("Unknown vertex type '" + vertType + "' encountered in getVertByType().");
 			}
 		}
-		System.out.println(vertArray);
+
 		return vertArray;
 	}
 

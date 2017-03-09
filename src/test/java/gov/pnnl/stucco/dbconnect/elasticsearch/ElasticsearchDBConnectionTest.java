@@ -43,8 +43,8 @@ public class ElasticsearchDBConnectionTest extends TestCase {
 //            JSONObject vertex = connection.getVertByName("80");
 //            JSONObject vertex = connection.getVertByName("50.7.55.82:80");
 //            JSONObject vertex = connection.getVertByName("128.219.49.14:38828_through_50.7.55.82:80");
-//            JSONArray array = connection.getVertByType("flow",1,5);
-//            JSONArray array = connection.getInEdgesPage("128.219.49.14:38828_through_50.7.55.82:80", "flow", 0, 20);
+//            JSONArray array = connection.getVertByType("port",2,5);
+            JSONArray array = connection.getOutEdgesPage("56942", "port", 0, 5);
 //            System.out.println(vertex);
             connection.close();
         } catch (UnknownHostException e) {
