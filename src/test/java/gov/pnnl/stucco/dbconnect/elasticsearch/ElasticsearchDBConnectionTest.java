@@ -3,6 +3,7 @@ package gov.pnnl.stucco.dbconnect.elasticsearch;
 import java.net.UnknownHostException;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -43,6 +44,8 @@ public class ElasticsearchDBConnectionTest extends TestCase {
 //            JSONObject vertex = connection.getVertByName("50.7.55.82:80");
 //            JSONObject vertex = connection.getVertByName("128.219.49.14:38828_through_50.7.55.82:80");
 //            JSONArray array = connection.getVertByType("flow",1,5);
+//            JSONArray array = connection.getInEdgesPage("128.219.49.14:38828_through_50.7.55.82:80", "flow", 0, 20);
+//            System.out.println(vertex);
             connection.close();
         } catch (UnknownHostException e) {
             e.printStackTrace();
