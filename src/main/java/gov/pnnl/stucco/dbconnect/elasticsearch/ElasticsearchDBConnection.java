@@ -1,17 +1,20 @@
 package gov.pnnl.stucco.dbconnect.elasticsearch;
 
-import java.util.Map;
 import java.io.FileNotFoundException;
-
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -21,6 +24,8 @@ public class ElasticsearchDBConnection {
 	private static String CLUSTER = "elasticsearch";
 	private static String HOST = "localhost";
 	private static int PORT = 9300;
+	private static String INDEX = "situ";
+	private static Set<String> SOURCESET = new HashSet<String>();
 
 	private TransportClient prebuiltClient = null;
 	private Settings settings = null;
@@ -46,6 +51,9 @@ public class ElasticsearchDBConnection {
 		CLUSTER = config.get("cluster").toString();
 		HOST = config.get("host").toString();
 		PORT = (Integer)config.get("port");
+		INDEX = config.get("index").toString();
+		List<String> sources = (ArrayList)config.get("source");
+		SOURCESET.addAll(sources);
 	}
 
 	private void prebuildClient() throws UnknownHostException {
@@ -55,6 +63,6 @@ public class ElasticsearchDBConnection {
 	}
 
 	public Connection getConnection() {
-		return new Connection(prebuiltClient, inetAddress, logger);
+		return new Connection(prebuiltClient, inetAddress, INDEX, SOURCESET, logger);
 	}
 }

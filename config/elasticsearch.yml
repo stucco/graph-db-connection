@@ -1,4 +1,6 @@
 elasticsearch_connection:
-  cluster: elasticsearch_yv4
+  cluster: elasticsearch
   host: localhost
   port: 9300
+  index: situ_2015-07-10
+  source: ["Situ"]
