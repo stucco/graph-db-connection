@@ -799,5 +799,34 @@ public class OrientDBConnection extends DBConnectionBase {
         return edgePropertyList;
     }
 
+    /**
+     * Used by postgres
+     */
     public void bulkLoadGraph(JSONObject graph) {}
+
+    /**
+     * TODO: implementation
+     * return the number of vertices
+     * @return count
+     */
+    @Override
+    public long getVertCountByConstraints(List<DBConstraint> constraints) {
+        return 0L;
+    }
+
+    /**
+     * gets the number of edges in the graph dest id = inVertID
+     */
+    @Override
+    public long getInEdgeCount(String inVertID) {
+        return 0L;
+    };
+
+    /**
+     * gets the number of edges in the graph with src id = outVertID
+     */
+    @Override
+    public long getOutEdgeCount(String outVertID) {
+        return 0L;
+    }
 }

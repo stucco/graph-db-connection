@@ -20,11 +20,26 @@ public interface DBConnectionAlignment {
      * gets the number of vertices in the graph
      */
     public long getVertCount();
+
+    /**
+     * gets the number of vertices in the graph with matching constraints
+     */
+    public long getVertCountByConstraints(List<DBConstraint> constraints);
     
     /**
      * gets the number of edges in the graph
      */
     public long getEdgeCount();
+
+    /**
+     * gets the number of edges in the graph dest id = inVertID
+     */
+    public long getInEdgeCount(String inVertID);
+
+    /**
+     * gets the number of edges in the graph with src id = outVertID
+     */
+    public long getOutEdgeCount(String outVertID);
 
     /**
      * Retrieves the vertex's property map as referenced by the vertex ID

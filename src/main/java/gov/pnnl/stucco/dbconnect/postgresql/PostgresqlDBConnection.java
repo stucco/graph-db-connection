@@ -122,7 +122,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      * Open the DB prior to working with the system, for every open there should be a 
      * corresponding close()
      * If the system is already open() not other connections will be made from this thread
-     */
+     */ 
     @Override
     public void open() { 
         try {
@@ -132,7 +132,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("could not create PostgreSQL client connection");
+            //throw new StuccoDBException("could not create PostgreSQL client connection");
         }
     };
 
@@ -148,7 +148,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("could not close PostgreSQL client connection");
+            //throw new StuccoDBException("could not close PostgreSQL client connection");
         }
     };
 
@@ -223,7 +223,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             e.printStackTrace();
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to add new vertex with name - " + properties.get("name") + ", and vertexType - " + properties.get("vertexType"));
+            //throw new StuccoDBException("failed to add new vertex with name - " + properties.get("name") + ", and vertexType - " + properties.get("vertexType"));
         }    
 
         return id;
@@ -259,7 +259,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to get vertex by id");
+            //throw new StuccoDBException("failed to get vertex by id");
         }
 
         return vertex; 
@@ -291,7 +291,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to add edge!");
+            //throw new StuccoDBException("Failed to add edge!");
         }  
     };
 
@@ -332,7 +332,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get out edges!");
+            //throw new StuccoDBException("Failed to get out edges!");
         }
         return edges;
     };
@@ -347,7 +347,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edges", outVertID, "outVertID");
 
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
-        String query = String.format("SELECT * FROM Edges WHERE outVertID ='%s' order by timestamp desc offset %d limit %d;", outVertID, offset, limit);
+        String query = String.format("SELECT * FROM Edges WHERE outVertID ='%s' order by timestamp, inVertID desc offset %d limit %d;", outVertID, offset, limit);
         try {
             Connection connection = connectionPool.getConnection();
             Statement poolStatement = connection.createStatement(); 
@@ -360,7 +360,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get out edges!");
+            //throw new StuccoDBException("Failed to get out edges!");
         }
         return edges;
     };
@@ -387,7 +387,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get in edges!");
+            //throw new StuccoDBException("Failed to get in edges!");
         }
 
         return edges;     
@@ -403,7 +403,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         sanityCheck("get edges", inVertID, "inVertID");
 
         List<Map<String, Object>> edges = new ArrayList<Map<String, Object>>();
-        String query = String.format("SELECT * FROM Edges WHERE inVertID ='%s' order by timestamp desc offset %d limit %d;", inVertID, offset, limit);
+        String query = String.format("SELECT * FROM Edges WHERE inVertID ='%s' order by timestamp, outVertID desc offset %d limit %d;", inVertID, offset, limit);
         try {
             Connection connection = connectionPool.getConnection();
             Statement poolStatement = connection.createStatement(); 
@@ -416,7 +416,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get in edges!");
+            //throw new StuccoDBException("Failed to get in edges!");
         }
 
         return edges;     
@@ -438,7 +438,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to select edges with query: " + query);
+            //throw new StuccoDBException("failed to select edges with query: " + query);
         }    
 
         return edges;
@@ -467,7 +467,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get in vert ids!");
+            //throw new StuccoDBException("Failed to get in vert ids!");
         }
 
         return vertIDs;
@@ -503,7 +503,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get in vert ids by relation and constraints!");
+            //throw new StuccoDBException("Failed to get in vert ids by relation and constraints!");
         }
 
         return vertIDs;
@@ -532,7 +532,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get out vert ids!");
+            //throw new StuccoDBException("Failed to get out vert ids!");
         }
 
         return vertIDs;
@@ -568,7 +568,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get out vert ids by relation and constraints!");
+            //throw new StuccoDBException("Failed to get out vert ids by relation and constraints!");
         }
 
         return vertIDs;
@@ -599,7 +599,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to get vert ids!");
+            //throw new StuccoDBException("Failed to get vert ids!");
         }
 
         return vertIDs;
@@ -701,7 +701,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                             constraintsList = buildString(constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)));
                         }
                     }
-                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
                     vertIDs.addAll(getVertIDs(query));
                     break;
                 }
@@ -717,14 +717,14 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                     if (name != null) {
                         JSONObject tableColumns = vertTables.getJSONObject(tableName).getJSONObject("columns");
                         if (tableColumns.has("alias")) {
-                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)), " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)), " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
                             vertIDs.addAll(getVertIDs(query));
                         } else {
-                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
                             vertIDs.addAll(getVertIDs(query));
                         }
                     } else {
-                        String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp desc offset ", offset, " LIMIT ", limit);
+                        String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
                         vertIDs.addAll(getVertIDs(query));
                     }
                 }
@@ -746,6 +746,15 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         }
 
         return name;
+    }
+
+    private Map<String, Object> getConstraintPropertiesMap(List<DBConstraint> constraints) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (DBConstraint constraint : constraints) {
+            map.put(constraint.getProp(), constraint.getVal());
+        }
+
+        return map;
     }
 
     private List<String> getConstraintProperties(List<DBConstraint> constraints) {
@@ -827,7 +836,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to remove edge!");
+            //throw new StuccoDBException("Failed to remove edge!");
         }
     };
 
@@ -853,7 +862,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
                 logger.warn(getStackTrace(e));
-                throw new StuccoDBException("Failed to remove vert by id!");
+                //throw new StuccoDBException("Failed to remove vert by id!");
             }
         }
 
@@ -871,7 +880,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to remove edge by vert ID!");
+            //throw new StuccoDBException("Failed to remove edge by vert ID!");
         }
     }
     
@@ -965,7 +974,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("Failed to remove all vertices!");            
+            //throw new StuccoDBException("Failed to remove all vertices!");            
         }
         
     };
@@ -1068,7 +1077,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
                 logger.warn(getStackTrace(e));
-                throw new StuccoDBException("failed to select all vertices from DB");
+                //throw new StuccoDBException("failed to select all vertices from DB");
             }
         }
 
@@ -1090,7 +1099,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to get all edges from DB!");
+            //throw new StuccoDBException("failed to get all edges from DB!");
         }
        
        return edgesJson;
@@ -1101,7 +1110,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public long getVertCount() {
-        long count = 0L;
+        long count = 0L; 
         for (Object table : vertTables.keySet()) {
             String tableName = table.toString();
             PreparedStatement preparedStatement = ps.getPreparedStatement(tableName, API.GET_VERT_COUNT);
@@ -1113,12 +1122,71 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             } catch (SQLException e) {
                 logger.warn(e.getLocalizedMessage());
                 logger.warn(getStackTrace(e));
-                throw new StuccoDBException("failed to count rows in table: " + tableName);
+                //throw new StuccoDBException("failed to count rows in table: " + tableName);
             }
         }
         
         return count;
     };
+ 
+    @Override
+    public long getVertCountByConstraints(List<DBConstraint> constraints) {
+        sanityCheck(constraints);
+
+        long count = 0L;
+
+        String constraintsString = buildConstraintsSubquery(constraints);
+        List<String> constraintsList = getConstraintProperties(constraints);
+
+        //quering only once, since constraints contain vertexType aka. table name
+        if (constraintsList.contains("vertexType")) {
+            for (int i = 0; i < constraints.size(); i++) {
+                DBConstraint constraint = constraints.get(i);
+                String key = constraint.getProp();
+                if (key.equals("vertexType")) { 
+                    String tableName = constraint.getVal().toString().replaceAll("'", "");
+                    String query = buildString("SELECT count(*) as count FROM ", tableName, " WHERE ", constraintsString);
+                    try {
+                        count = executeCountQuery(query);
+                    } catch (StuccoDBException e) {
+
+                    }
+                    break;
+                }
+            }
+        } else {
+        //quering all tables
+            for (Object table : vertTables.keySet()) {
+                String tableName = table.toString();
+                if (containsAllColumns(tableName, constraintsList)) {
+                    String query = buildString("SELECT count(*) as count FROM ", tableName, " WHERE ", constraintsString);
+                    count = count + executeCountQuery(query);
+                }
+            }
+        }
+
+        return count;
+    };
+
+    private long executeCountQuery(String query) {
+        long count = 0L;
+
+        try {
+            Connection connection = connectionPool.getConnection();
+            Statement statement = connection.createStatement(); 
+            ResultSet rs = statement.executeQuery(query);
+            if (rs.next()) {
+                count = rs.getLong("count");
+            }
+            connection.close();
+        } catch (SQLException e) {
+            logger.warn(e.getLocalizedMessage());
+            logger.warn(getStackTrace(e));
+            //throw new StuccoDBException("failed to execute query: " + query);
+        }
+
+        return count;
+    }
     
     /**
      * gets the number of edges in the graph; aka number of rows in "Edges" table in the database
@@ -1135,8 +1203,30 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to count rows in Edge table");
+            //throw new StuccoDBException("failed to count rows in Edge table");
         }
+
+        return count;
+    };
+
+    /**
+     * gets the number of edges in the graph; aka number of rows in "Edges" table in the database
+     */
+    @Override
+    public long getInEdgeCount(String inVertID) {
+        String query = buildString("SELECT COUNT(*) FROM Edges WHERE inVertID = '" + inVertID + "';");
+        long count = executeCountQuery(query);
+
+        return count;
+    };
+
+    /**
+     * gets the number of edges in the graph; aka number of rows in "Edges" table in the database
+     */
+    @Override
+    public long getOutEdgeCount(String outVertID) {
+        String query = buildString("SELECT COUNT(*) FROM Edges WHERE outVertID = '" + outVertID + "';");
+        long count = executeCountQuery(query);
 
         return count;
     };
@@ -1167,7 +1257,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to count rows in Edge table");
+            //throw new StuccoDBException("failed to count rows in Edge table");
         }
 
         return count;
@@ -1192,7 +1282,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to select vertIDs with query: " + query);
+            //throw new StuccoDBException("failed to select vertIDs with query: " + query);
         }
 
         return vertIDs;
@@ -1209,7 +1299,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to execute query: " + query);
+            //throw new StuccoDBException("failed to execute query: " + query);
         }
 
         return success;
@@ -1226,7 +1316,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         } catch (SQLException e) {
             logger.warn(e.getLocalizedMessage());
             logger.warn(getStackTrace(e));
-            throw new StuccoDBException("failed to execute query: " + query);
+            //throw new StuccoDBException("failed to execute query: " + query);
         }
 
         return success;
@@ -1417,7 +1507,8 @@ public class PostgresqlDBConnection extends DBConnectionBase {
             e.printStackTrace();
         } catch (SQLException e) {
             e.printStackTrace();
-        } finally {
+        } 
+        finally {
             try {
                 if (copyIn.isActive()) {
                     copyIn.cancelCopy();
