@@ -16,6 +16,9 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import gov.pnnl.stucco.dbconnect.DBConnectionAlignment;
+import gov.pnnl.stucco.dbconnect.DBConnectionFactory;
+
 
 /**
  * Sapphire Elasticsearch index connection
@@ -62,7 +65,28 @@ public class ElasticsearchDBConnection {
 		inetAddress = new InetSocketTransportAddress(InetAddress.getByName(HOST), PORT);
 	}
 
-	public Connection getConnection() {
-		return new Connection(prebuiltClient, inetAddress, INDEX, SOURCESET, logger);
+	public Connection getConnection() throws UnknownHostException {
+		Connection con = new Connection(prebuiltClient, inetAddress, INDEX, SOURCESET, logger);
+		con.setStuccoDBConnection(getStuccoDB());
+		con.open();
+
+		return con;
 	}
+
+  public DBConnectionAlignment getStuccoDB() {
+    String type = System.getenv("STUCCO_DB_TYPE");
+    if (type == null) {
+        throw (new NullPointerException("Missing environment variable STUCCO_DB_TYPE"));
+    } 
+
+    String config = System.getenv("STUCCO_DB_CONFIG");
+	  if (config == null) {
+	      throw (new NullPointerException("Missing environment variable STUCCO_DB_CONFIG"));
+	  }
+	  DBConnectionFactory factory = DBConnectionFactory.getFactory(DBConnectionFactory.Type.valueOf(type));
+	  factory.setConfiguration(config);
+	  DBConnectionAlignment db = factory.getDBConnectionTestInterface();
+
+	  return db;
+  }
 }
