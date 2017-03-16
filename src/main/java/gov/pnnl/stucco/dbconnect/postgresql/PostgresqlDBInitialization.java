@@ -138,6 +138,12 @@ public class PostgresqlDBInitialization {
                 String sql = String.format("CREATE INDEX IF NOT EXISTS %s_alias_idx ON %s USING gin(%s);", tableName, tableName, columnsList);
                 statement.execute(sql);
             }
+            index = indexes.optJSONArray("BTREE");
+            if (index != null) {
+                String columnsList = jsonArrayToString(index);
+                String sql = String.format("CREATE INDEX IF NOT EXISTS %s_timestamp_idx ON %s (%s);", tableName, tableName, columnsList);
+                statement.execute(sql);
+            }
         }
     };
 

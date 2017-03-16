@@ -3,8 +3,8 @@
     "Edges": {
       "columns": {
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "outVertID": {
           "constraint": "text NOT NULL",
@@ -40,6 +40,9 @@
           "outVertID",
           "inVertID",
           "relation"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     }
@@ -52,12 +55,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "endIP": { 
           "constraint": "text NOT NULL",
@@ -123,8 +126,11 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
-      }
+      }, 
     },
     "IP": {
       "columns": {
@@ -133,12 +139,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -184,6 +190,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -194,12 +203,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -240,6 +249,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -250,12 +262,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -296,6 +308,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -306,12 +321,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -352,6 +367,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -362,12 +380,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -417,6 +435,9 @@
         "UNIQUE": [
           "name",
           "observableType"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -427,12 +448,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -473,6 +494,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -483,12 +507,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -534,6 +558,9 @@
       "indexes": {
         "GIN": [
           "alias"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -544,12 +571,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -590,6 +617,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -600,12 +630,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -641,6 +671,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -651,12 +684,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -707,6 +740,9 @@
       "indexes": {
         "GIN": [
           "alias"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -717,12 +753,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -763,6 +799,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -773,12 +812,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -819,6 +858,9 @@
       "indexes": {
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     },
@@ -829,12 +871,12 @@
           "type": "text"
         },
         "timestamp": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "modifiedDate": {
-          "constraint": "timestamp with time zone DEFAULT now() NOT NULL",
-          "type": "timestamp with time zone"
+          "constraint": "timestamp without time zone DEFAULT now() NOT NULL",
+          "type": "timestamp without time zone"
         },
         "vertexType": {
           "constraint": "text NOT NULL",
@@ -878,6 +920,9 @@
         ],
         "UNIQUE": [
           "name"
+        ],
+        "BTREE": [
+          "date(timestamp)"
         ]
       }
     }

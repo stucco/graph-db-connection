@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -701,7 +702,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                             constraintsList = buildString(constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)));
                         }
                     }
-                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
+                    String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by date(timestamp), name desc offset ", offset, " LIMIT ", limit);
                     vertIDs.addAll(getVertIDs(query));
                     break;
                 }
@@ -720,11 +721,11 @@ public class PostgresqlDBConnection extends DBConnectionBase {
                             String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " OR ", buildConstraintsSubquery(getConstraint("alias", Condition.contains, name)), " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
                             vertIDs.addAll(getVertIDs(query));
                         } else {
-                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
+                            String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by date(timestamp), name desc offset ", offset, " LIMIT ", limit);
                             vertIDs.addAll(getVertIDs(query));
                         }
                     } else {
-                        String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by timestamp, name desc offset ", offset, " LIMIT ", limit);
+                        String query = buildString("SELECT _id as vertID FROM ", tableName, " WHERE ", constraintsList, " order by date(timestamp), name desc offset ", offset, " LIMIT ", limit);
                         vertIDs.addAll(getVertIDs(query));
                     }
                 }
@@ -1132,8 +1133,16 @@ public class PostgresqlDBConnection extends DBConnectionBase {
     @Override
     public long getVertCountByConstraints(List<DBConstraint> constraints) {
         sanityCheck(constraints);
-
         long count = 0L;
+
+        for (int i = 0; i < constraints.size(); i++) {
+            DBConstraint c = constraints.get(i);
+            String val = (String) c.getVal();
+            if (val.startsWith("'(current")) {
+                val = val.substring(1, val.length() - 1);
+                constraints.set(i, new PostgresqlDBConstraint(c.getProp(), c.getCond(), val));
+            }
+        }
 
         String constraintsString = buildConstraintsSubquery(constraints);
         List<String> constraintsList = getConstraintProperties(constraints);
@@ -1158,7 +1167,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
         //quering all tables
             for (Object table : vertTables.keySet()) {
                 String tableName = table.toString();
-                if (containsAllColumns(tableName, constraintsList)) {
+                if (containsAllColumns(tableName, constraintsList) || (constraintsList.size() == 1 && constraintsList.contains("date(timestamp)"))) {
                     String query = buildString("SELECT count(*) as count FROM ", tableName, " WHERE ", constraintsString);
                     count = count + executeCountQuery(query);
                 }
@@ -1342,6 +1351,7 @@ public class PostgresqlDBConnection extends DBConnectionBase {
      */
     @Override
     public DBConstraint getConstraint(String property, Condition condition, Object value) {
+        System.out.println("in get constraintsList with value: " + value);
         if (condition == Condition.substring) {
             value = buildString("'%", value, "%'");
         } else if (condition == Condition.contains) {
