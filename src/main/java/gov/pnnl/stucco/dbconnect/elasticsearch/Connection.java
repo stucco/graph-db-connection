@@ -365,76 +365,20 @@ public class Connection {
 	}
 	
 	
-	public JSONArray getVertByType(String vertProp, String vertType, int pageNumber, int pageSize) {
+	public JSONArray getVertByType(String vertProp, String vertType, int pageNumber, int pageSize, Set<String> skipSet) {
     DBConstraint c = db.getConstraint(vertProp, Condition.eq, StringUtils.capitaliseAllWords(vertType));
 
 		JSONArray vertArray = new JSONArray();
 		JSONObject vertJSON = null;
 		int size = (pageNumber + 1) * pageSize * 3;
-		int offset = pageNumber + pageSize + 1;
+		int offset = pageNumber * pageSize + 1;
 
 		if (client != null) {
 			if (vertType.equalsIgnoreCase("ip")) {
-				Set<String> ipSet = new HashSet<String>();
-				SearchResponse response = client.prepareSearch(indexName).setSize(size).get();
-				for (SearchHit hit : response.getHits().getHits()) {
-					Map<String,Object> sourceMap = hit.getSource();
-					if (sourceMap.containsKey("srcIP")) {
-						String srcIP = sourceMap.get("srcIP").toString();
-						if (!ipSet.contains(srcIP) && !containedInStuccoDB(c, srcIP)) {
-							ipSet.add(srcIP);
-							if (ipSet.size() >= offset) {
-								vertArray.put(buildIPVert(srcIP, sourceSet));
-								if (vertArray.length() == pageSize) {
-									return vertArray;
-								}
-							}
-						}
-					}
-					if (sourceMap.containsKey("dstIP")) {
-						String dstIP = sourceMap.get("dstIP").toString();
-						if (!ipSet.contains(dstIP) && !containedInStuccoDB(c, dstIP)) {
-							ipSet.add(dstIP);
-							if (ipSet.size() >= (pageNumber * pageSize + 1)) {
-								vertArray.put(buildIPVert(dstIP, sourceSet));
-								if (vertArray.length() == pageSize) {
-									return vertArray;
-								}
-							}
-						}
-					}
-				}
+				vertArray = getNextIPSet(pageNumber, pageSize, c, skipSet);
 			} 
 			else if (vertType.equalsIgnoreCase("port")) {
-				Set<String> portSet = new HashSet<String>();
-				SearchResponse response = client.prepareSearch(indexName).setSize(size).get();
-				for (SearchHit hit : response.getHits().getHits()) {
-					Map<String,Object> sourceMap = hit.getSource();
-					if (sourceMap.containsKey("srcPort")) {
-						String srcPort = sourceMap.get("srcPort").toString();
-						if (!portSet.contains(srcPort) && !containedInStuccoDB(c, srcPort)) {
-							portSet.add(srcPort);
-							if (portSet.size() >= offset) {
-								vertArray.put(buildPortVert(srcPort, sourceSet));
-								if (vertArray.length() == pageSize) {
-									return vertArray;
-								}
-							}
-						}
-					}
-					if (sourceMap.containsKey("dstPort")) {
-						String dstPort = sourceMap.get("dstPort").toString();
-						if (!portSet.contains(dstPort) && !containedInStuccoDB(c, dstPort)) {
-							portSet.add(dstPort);
-							if (portSet.size() >= offset) {
-								vertArray.put(buildPortVert(dstPort, sourceSet));
-								if (vertArray.length() == pageSize) {
-									return vertArray;
-								}
-							}
-						}
-					}
-				}
+				vertArray = getNextPortSet(pageNumber, pageSize, c, skipSet);
 			} 
 			else if (vertType.equalsIgnoreCase("socket address")) {
 				Set<String> addrSet = new HashSet<String>();
@@ -478,7 +422,7 @@ public class Connection {
 				}
 			} 
 			else if (vertType.equalsIgnoreCase("network flow")) {
-				SearchResponse response = client.prepareSearch(indexName).setSize(size).get();
+				SearchResponse response = client.prepareSearch(indexName).setFrom(pageNumber).setSize(size).get();
 				SearchHit[] hits = response.getHits().getHits();
 				
 				for (SearchHit hit : hits) {
@@ -608,6 +552,176 @@ public class Connection {
 
 		return vertArray;
 	}
+	
+	private JSONArray getNextIPSet(int pageNumber, int pageSize, DBConstraint c, Set<String> skipSet) {
+
+		JSONObject nextIP = null;
+		JSONArray nextSet = new JSONArray();
+
+		int size = (pageNumber + 1) * (pageSize/2);
+		int startOffset = pageNumber * (pageSize/2);
+		//TODO: order agg by time
+		SearchResponse response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(size)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(size)).get();
+		Terms agTerms = response.getAggregations().get("srcIPs");
+		List<Bucket> srcBuckets = agTerms.getBuckets();
+		agTerms = response.getAggregations().get("dstIPs");
+		List<Bucket> dstBuckets = agTerms.getBuckets();
+		while ((nextSet.length() < pageSize) || ((srcBuckets.size() < startOffset) && (dstBuckets.size() < startOffset))) {
+			
+			for (int i=startOffset; i<srcBuckets.size(); i++) {
+				String ip = srcBuckets.get(i).getKeyAsString();
+				if ((!skipSet.contains(ip)) && (!containedInStuccoDB(c, ip))) {
+					skipSet.add(ip);
+					nextIP = buildIPVert(ip, sourceSet);
+					nextSet.put(nextIP);
+					if (nextSet.length() == pageSize) {
+						return nextSet;
+					}
+				}
+			}
+			
+			for (int i=startOffset; i<dstBuckets.size(); i++) {
+				String ip = dstBuckets.get(i).getKeyAsString();
+				if ((!skipSet.contains(ip)) && (!containedInStuccoDB(c, ip))) {
+					skipSet.add(ip);
+					nextIP = buildIPVert(ip, sourceSet);
+					nextSet.put(nextIP);
+					if (nextSet.length() == pageSize) {
+						return nextSet;
+					}
+				}
+			}
+						
+			startOffset = startOffset + (pageSize/2);
+			size = size + (pageSize/2);
+			//get larger set of aggregations to check for next IP
+			response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(size)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(size)).get();
+			agTerms = response.getAggregations().get("srcIPs");
+			srcBuckets = agTerms.getBuckets();
+			agTerms = response.getAggregations().get("dstIPs");
+			dstBuckets = agTerms.getBuckets();			
+		}
+		
+		return nextSet;
+	}
+	
+	
+	private JSONArray getNextPortSet(int pageNumber, int pageSize, DBConstraint c, Set<String> skipSet) {
+
+		JSONObject nextPort = null;
+		JSONArray nextSet = new JSONArray();
+
+		int size = (pageNumber + 1) * (pageSize/2);
+		int startOffset = pageNumber * (pageSize/2);
+		//TODO: order agg by time
+		SearchResponse response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcPorts").field("srcPort").size(size)).addAggregation(AggregationBuilders.terms("dstPorts").field("dstPort").size(size)).get();
+		Terms agTerms = response.getAggregations().get("srcPorts");
+		List<Bucket> srcBuckets = agTerms.getBuckets();
+		agTerms = response.getAggregations().get("dstPorts");
+		List<Bucket> dstBuckets = agTerms.getBuckets();
+		while ((nextSet.length() < pageSize) || ((srcBuckets.size() < startOffset) && (dstBuckets.size() < startOffset))) {
+			
+			for (int i=startOffset; i<srcBuckets.size(); i++) {
+				String port = srcBuckets.get(i).getKeyAsString();
+				if ((!skipSet.contains(port)) && (!containedInStuccoDB(c, port))) {
+					skipSet.add(port);
+					nextPort = buildPortVert(port, sourceSet);
+					nextSet.put(nextPort);
+					if (nextSet.length() == pageSize) {
+						return nextSet;
+					}
+				}
+			}
+			
+			for (int i=startOffset; i<dstBuckets.size(); i++) {
+				String port = dstBuckets.get(i).getKeyAsString();
+				if ((!skipSet.contains(port)) && (!containedInStuccoDB(c, port))) {
+					skipSet.add(port);
+					nextPort = buildPortVert(port, sourceSet);
+					nextSet.put(nextPort);
+					if (nextSet.length() == pageSize) {
+						return nextSet;
+					}
+				}
+			}
+						
+			startOffset = startOffset + (pageSize/2);
+			size = size + (pageSize/2);
+			//get larger set of aggregations to check for next IP
+			response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcPorts").field("srcPort").size(size)).addAggregation(AggregationBuilders.terms("dstPorts").field("dstPort").size(size)).get();
+			agTerms = response.getAggregations().get("srcPorts");
+			srcBuckets = agTerms.getBuckets();
+			agTerms = response.getAggregations().get("dstPorts");
+			dstBuckets = agTerms.getBuckets();			
+		}
+		
+		return nextSet;
+	}
+	
+	
+//	public JSONArray getNextAddressSet(int pageNumber, int pageSize, DBConstraint c, Set<String> skipSet) {
+//
+//		JSONObject nextAddr = null;
+//		JSONArray nextSet = new JSONArray();
+//
+//		int size = (pageNumber + 1) * (pageSize/2);
+//		int startOffset = pageNumber * (pageSize/2);
+//		//TODO: order agg by time
+//		SearchResponse response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").subAggregation(AggregationBuilders.terms("srcPorts").field("srcPort")).size(size)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").subAggregation(AggregationBuilders.terms("dstPorts").field("dstPort")).size(size)).get();
+//		Terms agTerms = response.getAggregations().get("srcIPs");
+//		List<Bucket> srcIPBuckets = agTerms.getBuckets();
+//		for (int i=0; i<srcIPBuckets.size(); i++) {
+//			agTerms = srcIPBuckets.get(i).getAggregations().get("srcPorts");
+//		}
+//		 response.getAggregations()
+//		List<Bucket> srcPortBuckets = agTerms.getBuckets();
+//		agTerms = response.getAggregations().get("dstIPs");
+//		List<Bucket> dstIPBuckets = agTerms.getBuckets();
+//		agTerms = response.getAggregations().get("dstPorts");
+//		List<Bucket> dstPortBuckets = agTerms.getBuckets();
+//		while ((nextSet.length() < pageSize) || ((srcIPBuckets.size() < startOffset) && (dstIPBuckets.size() < startOffset))) {
+//			
+//			for (int i=startOffset; i<srcIPBuckets.size(); i++) {
+//				String ip = srcIPBuckets.get(i).getKeyAsString();
+//				if ((!skipSet.contains(ip))/* && (!containedInStuccoDB(c, ip))*/) {
+//					skipSet.add(ip);
+//					nextAddr = buildIPVert(ip, sourceSet);
+//					nextSet.put(nextAddr);
+//					if (nextSet.length() == pageSize) {
+//						return nextSet;
+//					}
+//				}
+//			}
+//			
+//			for (int i=startOffset; i<dstIPBuckets.size(); i++) {
+//				String ip = dstIPBuckets.get(i).getKeyAsString();
+//				if ((!skipSet.contains(ip))/* && (!containedInStuccoDB(c, ip))*/) {
+//					skipSet.add(ip);
+//					nextAddr = buildIPVert(ip, sourceSet);
+//					nextSet.put(nextAddr);
+//					if (nextSet.length() == pageSize) {
+//						return nextSet;
+//					}
+//				}
+//			}
+//						
+//			startOffset = startOffset + (pageSize/2);
+//			size = size + (pageSize/2);
+//			//get larger set of aggregations to check for next IP
+//			response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(size)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(size)).get();
+//			agTerms = response.getAggregations().get("srcIPs");
+//			srcIPBuckets = agTerms.getBuckets();
+//			agTerms = response.getAggregations().get("dstIPs");
+//			dstIPBuckets = agTerms.getBuckets();			
+//		}
+//		
+//		return nextSet;
+//	}
+	
+//	private JSONArray getNextObservableSet(int pageNumber, int pageSize, DBConstraint c, Set<String> skipSet) {
+//		
+//	}
+	
 
 	private JSONObject buildIPVert(String ip, Object sourceSet) {
 		String ipID = GraphUtils.buildString("stucco:Observable-", UUID.randomUUID());
@@ -677,17 +791,11 @@ public class Connection {
 				else if ((constraint.getProp().equalsIgnoreCase("vertexType")) || (constraint.getProp().equalsIgnoreCase("observableType"))) {
 					String vertType = constraint.getVal().toString();
 					String vertProp = constraint.getProp();
-					resultArray = getVertByType(vertProp, vertType, pageNumber, (pageSize + constraints.size()));
+					resultArray = getVertByType(vertProp, vertType, pageNumber, pageSize, dismissSet);
 				}
 			}
 			
-			for (int i=0; i<resultArray.length(); i++) {
-				String key = ((JSONObject)resultArray.get(i)).get("name").toString();
-				if ((!dismissSet.contains(key)) && (vertArray.length() < pageSize)) {
-					vertArray.put(resultArray.get(i));
-				}
-			}
-			
+					
 		}
 		
 		return vertArray;
@@ -706,7 +814,7 @@ public class Connection {
 					if (vertType.equalsIgnoreCase("ip")) {
 						if (constraint.getCond().equals(Condition.eq)) {
 							//all ips
-							SearchResponse response = client.prepareSearch(indexName).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(maxSize)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(maxSize)).get();
+							SearchResponse response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(maxSize)).addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(maxSize)).get();
 							Terms agTerms = response.getAggregations().get("srcIPs");
 							List<Bucket> srcBuckets = agTerms.getBuckets();
 							agTerms = response.getAggregations().get("dstIPs");
@@ -722,7 +830,7 @@ public class Connection {
 					else if (constraint.getVal().toString().equalsIgnoreCase("port")) {
 						if (constraint.getCond().equals(Condition.eq)) {
 							//all ports
-							SearchResponse response = client.prepareSearch(indexName).addAggregation(AggregationBuilders.terms("srcPorts").field("srcPort").size(maxSize))
+							SearchResponse response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcPorts").field("srcPort").size(maxSize))
 									.addAggregation(AggregationBuilders.terms("dstPorts").field("dstPort").size(maxSize))
 									.get();
 							Terms agTerms = response.getAggregations().get("srcPorts");
@@ -740,7 +848,7 @@ public class Connection {
 					else if (constraint.getVal().toString().equalsIgnoreCase("socket address")) {
 						if (constraint.getCond().equals(Condition.eq)) {
 							//all addresses
-							JSONArray vertArray = getVertByType("observableType", "socket address", 0, maxSize);
+							JSONArray vertArray = getVertByType("observableType", "socket address", 0, maxSize, new HashSet<String>());
 							totalVerts += vertArray.length();
 						}
 					}
@@ -754,7 +862,7 @@ public class Connection {
 					else if (constraint.getVal().toString().equalsIgnoreCase("observable")) {
 						if (constraint.getCond().equals(Condition.eq)) {
 							//all ips, ports, addresses, flows
-							SearchResponse response = client.prepareSearch(indexName).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(maxSize))
+							SearchResponse response = client.prepareSearch(indexName).setSize(0).addAggregation(AggregationBuilders.terms("srcIPs").field("srcIP").size(maxSize))
 									.addAggregation(AggregationBuilders.terms("dstIPs").field("dstIP").size(maxSize))
 									.addAggregation(AggregationBuilders.terms("srcPorts").field("srcPort").size(maxSize))
 									.addAggregation(AggregationBuilders.terms("dstPorts").field("dstPort").size(maxSize))
@@ -781,9 +889,10 @@ public class Connection {
 								}
 							}
 							
-							JSONArray vertArray = getVertByType("observableType", "socket address", 0, maxSize);
+							JSONArray vertArray = getVertByType("observableType", "socket address", 0, maxSize, new HashSet<String>());
 							totalVerts += vertArray.length();
 							
+							response = client.prepareSearch(indexName).get();
 							totalVerts += response.getHits().getTotalHits();
 						}
 						else if (constraint.getCond().equals(Condition.neq)) {
