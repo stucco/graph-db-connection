@@ -1,10 +1,21 @@
+sudo: required
+dist: trusty
 language: java
 jdk:
-  - oraclejdk7
-  - openjdk7
   - oraclejdk8
+before_install:
+  - mvn --non-recursive scm:checkout -Dmodule.name=STIXExtractors -DscmVersion=master -DscmVersionType=branch
+  - cd STIXExtractors
+  - mvn -e clean install -Dmaven.test.skip=true
+  - cd ..
+addons:
+  postgresql: "9.5"
+before_script:
+  - ps aux | grep postgres
+  - psql -c "CREATE USER stucco WITH PASSWORD 'stucco' CREATEDB CREATEROLE SUPERUSER REPLICATION;" -U postgres
+  - psql -c "create database testdb with owner stucco;" -U postgres
 env:
-  - STUCCO_DB_TYPE=INMEMORY STUCCO_DB_CONFIG="config/inmemory.yml" STUCCO_DB_INDEX_CONFIG="config/inmemory.yml"
+  - STUCCO_DB_TYPE=POSTGRESQL STUCCO_DB_CONFIG="config/postgresql.yml" STUCCO_DB_INDEX_CONFIG=""
 after_success:
   - wget https://raw.githubusercontent.com/stucco/test/master/rerun-test.sh
   - chmod a+x ./rerun-test.sh

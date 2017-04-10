@@ -20,6 +20,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
@@ -241,6 +244,22 @@ public class OrientDBConnection extends DBConnectionBase {
             throw new NullPointerException();
         
         String query = "SELECT * FROM V " + buildQueryConstraintSql(constraints);
+        
+        List<OrientVertex> verts = this.getVerticesFromQuery(query);
+        List<String> vertIDs = new ArrayList<String>();
+        for (OrientVertex vertID : verts ){
+            vertIDs.add(vertID.getId().toString());
+        }
+        
+        return vertIDs;
+    }
+
+    @Override
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offset, int limit) {
+        if(constraints == null)
+            throw new NullPointerException();
+        
+        String query = "SELECT * FROM V OFFSET " + offset + " LIMIT " + limit + " " + buildQueryConstraintSql(constraints);
         
         List<OrientVertex> verts = this.getVerticesFromQuery(query);
         List<String> vertIDs = new ArrayList<String>();
@@ -709,5 +728,105 @@ public class OrientDBConnection extends DBConnectionBase {
         }
 
         return edgePropertyList;
+    }
+
+    //TODO: profile this paging implementation, and possibly change
+    @Override
+    public List<Map<String, Object>> getOutEdgesPage(String outVertID, int offset, int limit) {
+        if(outVertID == null || outVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        
+        Object query_ret = getVertByID(outVertID);
+        if(query_ret == null){
+            logger.warn("getOutVertIDs could not find inVertID:" + outVertID);
+            throw new IllegalArgumentException("missing or invalid outVertID");
+        }
+        
+        String query = String.format("SELECT expand(outE()) FROM %s", outVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        if (results.size() > offset) {
+            int end = Math.min(results.size(), offset + limit);
+            for (int i = offset; i < end; i++) {
+                OrientEdge item = results.get(i);
+                Map<String,Object> edgeProperties = new HashMap<String, Object>();
+                String relation = item.getLabel();
+                String inVertID = item.getInVertex().getIdentity().toString();
+                
+                edgeProperties.put("inVertID", inVertID);
+                edgeProperties.put("outVertID", outVertID);
+                edgeProperties.put("relation", relation);
+                edgePropertyList.add(edgeProperties);
+            }
+        }
+        
+        return edgePropertyList;
+    }
+
+    //TODO: profile this paging implementation, and possibly change
+    @Override
+    public List<Map<String, Object>> getInEdgesPage(String inVertID, int offset, int limit) {
+        if(inVertID == null || inVertID.equals("") ){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+        }
+
+        Object query_ret = getVertByID(inVertID);
+        if(query_ret == null){
+            logger.warn("getInVertIDs could not find inVertID:" + inVertID);
+            throw new IllegalArgumentException("missing or invalid inVertID");
+        }
+
+        String query = String.format("SELECT expand(inE()) FROM %s", inVertID); 
+        List<OrientEdge>results = getEdgesFromQuery(query);
+
+        List<Map<String,Object> > edgePropertyList = new ArrayList<Map<String,Object>>();
+        if (results.size() > offset) {
+            int end = Math.min(results.size(), offset + limit);
+            for (int i = offset; i < end; i++) {
+                OrientEdge item = results.get(i);
+                Map<String,Object> edgeProperties = new HashMap<String, Object>();
+                String relation = item.getLabel();
+                String outVertID = item.getOutVertex().getIdentity().toString();
+
+                edgeProperties.put("inVertID", inVertID);
+                edgeProperties.put("outVertID", outVertID);
+                edgeProperties.put("relation", relation);
+                edgePropertyList.add(edgeProperties);
+            }
+        }
+
+        return edgePropertyList;
+    }
+
+    /**
+     * Used by postgres
+     */
+    public void bulkLoadGraph(JSONObject graph) {}
+
+    /**
+     * TODO: implementation
+     * return the number of vertices
+     * @return count
+     */
+    @Override
+    public long getVertCountByConstraints(List<DBConstraint> constraints) {
+        return 0L;
+    }
+
+    /**
+     * gets the number of edges in the graph dest id = inVertID
+     */
+    @Override
+    public long getInEdgeCount(String inVertID) {
+        return 0L;
+    };
+
+    /**
+     * gets the number of edges in the graph with src id = outVertID
+     */
+    @Override
+    public long getOutEdgeCount(String outVertID) {
+        return 0L;
     }
 }

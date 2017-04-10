@@ -84,6 +84,16 @@ public class InMemoryDBConnection extends DBConnectionBase{
     }
 
     /**
+     * TODO: implementation
+     * return the number of vertices
+     * @return count
+     */
+    @Override
+    public long getVertCountByConstraints(List<DBConstraint> constraints) {
+        return 0L;
+    }
+
+    /**
      * return the number of edges
      * @return count
      */
@@ -141,6 +151,63 @@ public class InMemoryDBConnection extends DBConnectionBase{
             }
         }
         return foundEdges;
+    }
+
+    /**
+     * returns list of edge info maps for the outgoing edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    @Override
+    public List<Map<String, Object>> getOutEdgesPage(String outVertID, int offset, int limit) throws IllegalArgumentException{
+        if(outVertID == null || outVertID.equals("") || !vertices.containsKey(outVertID)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid outVertID");
+        }
+        List<Map<String, Object>> foundEdges = new LinkedList<Map<String, Object>>();
+        for(Map<String, Object> currEdge : edges.values()){
+            if( ((String)currEdge.get("outVertID")).equals(outVertID) ){
+                //inVertID = currEdge.get("inVertID");
+                //outVertID = currEdge.get("outVertID");
+                //relation = currEdge.get("relation");
+                foundEdges.add( currEdge );
+            }
+        }
+        List<Map<String, Object>> foundEdgesPage = new LinkedList<Map<String, Object>>();
+        if (foundEdges.size() > offset) {
+            int end = Math.min(foundEdges.size(), offset + limit);
+            for (int i = offset; i < end; i++) {
+                foundEdgesPage.add(foundEdges.get(i));
+            }
+        }
+
+        return foundEdgesPage;
+    }
+
+    /**
+     * returns list of edge info maps for the incoming edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    @Override
+    public List<Map<String, Object>> getInEdgesPage(String inVertID, int offset, int limit) throws IllegalArgumentException{
+        if(inVertID == null || inVertID.equals("") || !vertices.containsKey(inVertID)){
+            throw new IllegalArgumentException("cannot get edge with missing or invalid inVertID");
+        }
+        List<Map<String, Object>> foundEdges = new LinkedList<Map<String, Object>>();
+        for(Map<String, Object> currEdge : edges.values()){
+            if( ((String)currEdge.get("inVertID")).equals(inVertID) ){
+                foundEdges.add( currEdge );
+            }
+        }
+        List<Map<String, Object>> foundEdgesPage = new LinkedList<Map<String, Object>>();
+        if (foundEdges.size() > offset) {
+            int end = Math.min(foundEdges.size(), offset + limit);
+            for (int i = offset; i < end; i++) {
+                foundEdgesPage.add(foundEdges.get(i));
+            }
+        }
+
+        return foundEdgesPage;
     }
 
     /**
@@ -355,6 +422,81 @@ public class InMemoryDBConnection extends DBConnectionBase{
 
         return matchingIDs;
     }
+
+
+    /**
+     * Perform a query/search of the DB using the following constraints on the request
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    @Override
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offset, int limit) {
+        Set<String> candidateIDs = null;
+        Set<String> nonMatchingIDs = new HashSet<String>();
+        List<String> matchingIDs = new LinkedList<String>();
+
+        //First, generate candidateIDs set.
+        //Note that after candidateIDs is populated here, it will not be modified.
+        //TODO: really, we want to create a set of candidate ids for each index used, then find the overlap,
+        //  then match against any constraints that weren't used.
+        boolean indicesUsed = false;
+        if(indexedVertFields.size() > 0){ //TODO: needs better test coverage for use of indices
+            //This should use indexed fields to find candidateIDs, then find the nonMatchingIDs below as usual.
+            //we need to decide if only exact matches are allowed, or if ranges & etc. are ok here.
+            //also, somehow indicate that the constraints used here are 'done', so they aren't re-checked below.
+            candidateIDs = new HashSet<String>();
+            for(DBConstraint c : constraints){
+                if(c.getCond() != Condition.eq)
+                    continue;
+                if(indexedVertFields.containsKey(c.getProp())){
+                    indicesUsed = true;
+                    Map<String, Set<String>> currIndex = indexedVertFields.get(c.getProp());
+                    String currValue = c.getVal().toString();
+                    Set<String> currSet = currIndex.get(currValue);
+                    if(currSet != null){
+                        candidateIDs.addAll(currSet);
+                    }
+                }
+            }
+        }
+        if(!indicesUsed){
+            //if no initial matchingIDs set was generated yet, use all IDs
+            candidateIDs = vertices.keySet();
+        }
+
+        //make set of non-matching candidates, based on constraints
+        for(String id : candidateIDs){
+            Map<String, Object> candidateVert = vertices.get(id);
+            for(DBConstraint c : constraints){
+                Object candidateValue = candidateVert.get(c.getProp());
+                if( !compare(candidateValue, c.getCond(), c.getVal()) ){
+                    nonMatchingIDs.add(id);
+                    break;
+                }
+            }
+        }
+
+        // build the matchingIDs list, based on candidateIDs and nonMatchingIDs
+        for(String id : candidateIDs){
+            if( !nonMatchingIDs.contains(id) ){
+                matchingIDs.add(id);
+            }
+        }
+
+
+        if (candidateIDs.size() < offset) {
+            List<String> ids = new ArrayList<String>(candidateIDs);
+            int end = java.lang.Math.min(offset + limit, ids.size());
+            for (int i = offset; i < end ; i++) {
+                String id = ids.get(i);
+                if (!nonMatchingIDs.contains(id)) {
+                    matchingIDs.add(id);
+                }
+           }
+        }
+
+        return matchingIDs;
+    };
 
     /**
      * method to compare two objects that can use the conditional object
@@ -778,4 +920,22 @@ public class InMemoryDBConnection extends DBConnectionBase{
         }
     }
 
+    @Override
+    public void bulkLoadGraph(JSONObject graph) {}
+
+    /**
+     * gets the number of edges in the graph dest id = inVertID
+     */
+    @Override
+    public long getInEdgeCount(String inVertID) {
+        return 0L;
+    };
+
+    /**
+     * gets the number of edges in the graph with src id = outVertID
+     */
+    @Override
+    public long getOutEdgeCount(String outVertID) {
+        return 0L;
+    }
 }

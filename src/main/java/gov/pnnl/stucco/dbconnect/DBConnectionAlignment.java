@@ -7,6 +7,9 @@ package gov.pnnl.stucco.dbconnect;
 import java.util.Map;
 import java.util.List;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+
 /**
  * DBConnectionAlignment interface to support various connections into the graph DB for alignment.
  *
@@ -17,11 +20,26 @@ public interface DBConnectionAlignment {
      * gets the number of vertices in the graph
      */
     public long getVertCount();
+
+    /**
+     * gets the number of vertices in the graph with matching constraints
+     */
+    public long getVertCountByConstraints(List<DBConstraint> constraints);
     
     /**
      * gets the number of edges in the graph
      */
     public long getEdgeCount();
+
+    /**
+     * gets the number of edges in the graph dest id = inVertID
+     */
+    public long getInEdgeCount(String inVertID);
+
+    /**
+     * gets the number of edges in the graph with src id = outVertID
+     */
+    public long getOutEdgeCount(String outVertID);
 
     /**
      * Retrieves the vertex's property map as referenced by the vertex ID
@@ -58,6 +76,20 @@ public interface DBConnectionAlignment {
      * @return list of edge property maps
      */
     public List<Map<String, Object>> getInEdges(String inVertID);
+
+    /**
+     * returns list of edge info maps for the outgoing edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getOutEdgesPage(String outVertID, int offset, int limit);
+
+    /**
+     * returns list of edge info maps for the incoming edges of this vertex
+     * @param vertName
+     * @return list of edge property maps
+     */
+    public List<Map<String, Object>> getInEdgesPage(String inVertID, int offset, int limit);
 
     /**
      * Identify the vertices where their relationship type and direction enter the specified vertex
@@ -119,6 +151,13 @@ public interface DBConnectionAlignment {
      * @return list of vertex IDs
      */
     public List<String> getVertIDsByConstraints(List<DBConstraint> constraints);
+
+    /**
+     * Perform a query/search of the DB using the following constraints on the request
+     * @param constraints - list of constraint objects
+     * @return list of vertex IDs
+     */
+    public List<String> getVertIDsByConstraints(List<DBConstraint> constraints, int offcet, int limit);
     
     /**
      * Given two vertices and a relation, remove the edge
@@ -172,6 +211,9 @@ public interface DBConnectionAlignment {
     public DBConstraint getConstraint(String property, Condition condition, Object value);
     
 
-
-
+    /**
+     * bulk loading vertices
+     * @param vertices - json object of ids mapped to vertices
+     */
+    public void bulkLoadGraph(JSONObject graph);
 }
